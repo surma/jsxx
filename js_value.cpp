@@ -52,6 +52,10 @@ JSValue JSValue::operator[](const JSValue index) {
   return this->get_property(index);
 }
 
+JSValue JSValue::operator[](const char* index) {
+  return (*this)[JSValue{index}];
+}
+
 JSValue JSValue::get_property(const JSValue key) {
   switch (this->type()) {
   case JSValueInternalIndex::UNDEFINED:
