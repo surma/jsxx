@@ -16,3 +16,5 @@ $(OUTPUT): $(FILES)
 %.o: %.cpp
 	$(CXX) $(CFLAGS) -o $@ -c $<
 
+clean:
+	@rm -rf $(FILES) $(OUTPUT)

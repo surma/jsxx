@@ -6,6 +6,7 @@
 #include "js_primitives.hpp"
 
 using std::shared_ptr;
+using std::unique_ptr;
 
 class JSUndefined;
 class JSBool;
@@ -25,8 +26,9 @@ enum JSValueInternalIndex {
 };
 
 class JSValue {
-  using Box = std::variant<JSUndefined, JSBool, JSNumber, JSString, JSArray,
-                           JSObject, JSObject>;
+  using Box = std::variant<JSUndefined, JSBool, JSNumber, JSString,
+                           std::shared_ptr<JSArray>, std::shared_ptr<JSObject>,
+                           std::shared_ptr<JSObject>>;
 
 public:
   JSValue();
@@ -37,11 +39,13 @@ public:
   JSValue(const char *v);
   JSValue(std::string v);
   JSValue(JSString v);
+  JSValue(const JSValue &v);
+  virtual ~JSValue();
 
   JSValue operator==(const JSValue other);
   JSValue operator+(JSValue other);
   JSValue operator[](const JSValue index);
-  JSValue operator[](const char* index);
+  JSValue operator[](const char *index);
 
   static JSValue undefined();
   // static JSValue throww();
@@ -55,5 +59,5 @@ public:
 
   bool is_undefined() const;
 
-  std::shared_ptr<Box> internal;
+  Box *internal;
 };

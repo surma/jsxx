@@ -2,6 +2,9 @@
 #include <cmath>
 
 JSValue::JSValue() : internal{new Box{JSUndefined{}}} {};
+// Copy
+JSValue::JSValue(const JSValue &v) : internal{new Box{*v.internal}} {};
+
 JSValue::JSValue(bool v) : internal{new Box{JSBool{v}}} {};
 JSValue::JSValue(JSBool v) : internal{new Box{v}} {};
 JSValue::JSValue(double v) : internal{new Box{JSNumber{v}}} {};
@@ -9,6 +12,8 @@ JSValue::JSValue(JSNumber v) : internal{new Box{v}} {};
 JSValue::JSValue(const char *v) : internal{new Box{JSString{v}}} {};
 JSValue::JSValue(std::string v) : internal{new Box{JSString{v}}} {};
 JSValue::JSValue(JSString v) : internal{new Box{v}} {};
+
+JSValue::~JSValue() { delete this->internal; };
 
 JSValue JSValue::undefined() { return JSValue{}; }
 
@@ -46,13 +51,13 @@ JSValue JSValue::operator[](const JSValue index) {
     return JSValue::undefined();
   }
   if (this->type() == JSValueInternalIndex::OBJECT) {
-    JSObject obj = std::get<JSValueInternalIndex::OBJECT>(*this->internal);
+    JSObject obj = *std::get<JSValueInternalIndex::OBJECT>(*this->internal);
     return obj[index];
   }
   return this->get_property(index);
 }
 
-JSValue JSValue::operator[](const char* index) {
+JSValue JSValue::operator[](const char *index) {
   return (*this)[JSValue{index}];
 }
 
@@ -71,13 +76,13 @@ JSValue JSValue::get_property(const JSValue key) {
         .get_property(key);
   case JSValueInternalIndex::ARRAY:
     return std::get<JSValueInternalIndex::ARRAY>(*this->internal)
-        .get_property(key);
+        ->get_property(key);
   case JSValueInternalIndex::OBJECT:
     return std::get<JSValueInternalIndex::OBJECT>(*this->internal)
-        .get_property(key);
+        ->get_property(key);
   case JSValueInternalIndex::EXCEPTION:
     return std::get<JSValueInternalIndex::EXCEPTION>(*this->internal)
-        .get_property(key);
+        ->get_property(key);
   }
 }
 
