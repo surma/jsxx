@@ -14,6 +14,16 @@ JSValue::JSValue(std::string v) : internal{new Box{JSString{v}}} {};
 JSValue::JSValue(JSString v) : internal{new Box{v}} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
+JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
+  shared_ptr<JSObject> obj{new JSObject()};
+
+  for (const auto &pair : pairs) {
+    obj->internal.push_back(pair);
+  }
+  JSValue val{};
+  val.internal->emplace<JSValueInternalIndex::OBJECT>(obj);
+  return val;
+}
 
 JSValue JSValue::operator==(const JSValue other) {
   if (this->type() == JSValueInternalIndex::NUMBER) {

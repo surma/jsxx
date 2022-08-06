@@ -46,6 +46,7 @@ public:
   JSValue operator[](const JSValue index);
   JSValue operator[](const char *index);
 
+  static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
   static JSValue undefined();
   // static JSValue throww();
 
