@@ -20,60 +20,45 @@ class JSBase {
 public:
   JSBase();
 
-  JSValue operator[](JSValue &key);
+  JSValue get_property(JSValue key);
 
   std::vector<std::pair<JSValue, JSValue>> properties;
-
-private:
-  virtual void init_properties() {}
 };
 
-class JSBool : JSBase {
+class JSBool : public JSBase {
 public:
   JSBool(bool v);
 
   bool internal;
 };
 
-class JSNumber : JSBase {
+class JSNumber : public JSBase {
 public:
   JSNumber(double v);
   double internal;
-
-private:
-  void init_properties();
 };
 
-class JSString : JSBase {
+class JSString : public JSBase {
 public:
   JSString(const char *v);
   JSString(std::string v);
   std::string internal;
 };
 
-class JSArray : JSBase {
+class JSArray : public JSBase {
 public:
   JSArray();
 };
 
-class JSObject : JSBase {
+class JSObject : public JSBase {
 public:
   JSObject();
 
-  // JSValue& operator[](JSValue& idx) {
-  // 	auto obj = std::find_if(this->internal.begin(), this->internal.end(),
-  // [=](std::pair<JSValue, JSValue>& item) { return item.first == idx; });
-  // 	if(obj == this->internal.end()) {
-  // 		// FIXME
-  // 		return idx;
-  // 	}
-  // 	return (*obj).second;
-  // }
-  // Can’t be bothered to make JSValue work with std::map for now.
+  JSValue operator[](const JSValue idx);
   std::vector<std::pair<JSValue, JSValue>> internal;
 };
 
-class JSFunction : JSBase {
+class JSFunction : public JSBase {
   using JSExternFunc = std::function<JSValue(const std::vector<JSValue> &)>;
 
 public:

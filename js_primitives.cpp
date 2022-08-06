@@ -1,12 +1,12 @@
 #include "js_primitives.hpp"
 
-JSBase::JSBase() { this->init_properties(); }
+JSBase::JSBase() {}
 
 JSValue JSUndefined::operator==(JSValue &other) {
   return JSValue{other.is_undefined()};
 }
 
-JSValue JSBase::operator[](JSValue &key) {
+JSValue JSBase::get_property(JSValue key) {
   auto obj = std::find_if(this->properties.begin(), this->properties.end(),
                           [&](std::pair<JSValue, JSValue> &item) -> bool {
                             return (item.first == key).coerce_to_bool();
@@ -17,16 +17,31 @@ JSValue JSBase::operator[](JSValue &key) {
   return (*obj).second;
 }
 
-void JSNumber::init_properties() {
-  this->properties.push_back(std::pair{JSValue{"test"}, JSValue{9.0}});
+JSBool::JSBool(bool v) : JSBase(), internal{v} {};
+
+std::vector<std::pair<JSValue, JSValue>> JSNumber_prototype{
+    {JSValue{"test"}, JSValue{9.0}}};
+JSNumber::JSNumber(double v) : JSBase(), internal{v} {
+  for (const auto &entry : JSNumber_prototype) {
+    this->properties.push_back(entry);
+  }
+};
+
+JSString::JSString(const char *v) : JSBase(), internal{std::string(v)} {};
+
+JSString::JSString(std::string v) : JSBase(), internal{v} {};
+
+JSArray::JSArray() : JSBase(){};
+JSObject::JSObject() : JSBase(), internal{} {};
+JSValue JSObject::operator[](const JSValue idx) {
+  auto obj = std::find_if(this->internal.begin(), this->internal.end(),
+                          [=](std::pair<JSValue, JSValue> &item) {
+                            return (item.first == idx).coerce_to_bool();
+                          });
+  if (obj == this->internal.end()) {
+    return JSValue::undefined();
+  }
+  return (*obj).second;
 }
 
-JSBool::JSBool(bool v) : internal{v} {};
-JSNumber::JSNumber(double v) : internal{v} {};
-JSString::JSString(const char *v) : internal{std::string(v)} {};
-JSString::JSString(std::string v) : internal{v} {};
-
-JSArray::JSArray() { throw "Unimplemented"; }
-JSObject::JSObject() : internal{} {};
-
-JSFunction::JSFunction(JSExternFunc f) : internal{f} {};
+JSFunction::JSFunction(JSExternFunc f) : JSBase(), internal{f} {};
