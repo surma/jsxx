@@ -40,7 +40,6 @@ public:
   JSValue(std::string v);
   JSValue(JSString v);
   JSValue(const JSValue &v);
-  virtual ~JSValue();
 
   JSValue operator==(const JSValue other);
   JSValue operator+(JSValue other);
@@ -59,5 +58,5 @@ public:
 
   bool is_undefined() const;
 
-  Box *internal;
+  unique_ptr<Box> internal;
 };

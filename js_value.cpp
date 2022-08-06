@@ -13,8 +13,6 @@ JSValue::JSValue(const char *v) : internal{new Box{JSString{v}}} {};
 JSValue::JSValue(std::string v) : internal{new Box{JSString{v}}} {};
 JSValue::JSValue(JSString v) : internal{new Box{v}} {};
 
-JSValue::~JSValue() { delete this->internal; };
-
 JSValue JSValue::undefined() { return JSValue{}; }
 
 JSValue JSValue::operator==(const JSValue other) {
