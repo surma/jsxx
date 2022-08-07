@@ -16,7 +16,7 @@ class JSString;
 class JSArray;
 class JSObject;
 
-enum JSValueInternalIndex {
+enum JSValueType : char {
   UNDEFINED,
   BOOL,
   NUMBER,
@@ -55,7 +55,7 @@ public:
 
   JSValueBinding get_property(const JSValue key);
 
-  JSValueInternalIndex type() const;
+  JSValueType type() const;
   double coerce_to_double() const;
   std::string coerce_to_string() const;
   bool coerce_to_bool() const;

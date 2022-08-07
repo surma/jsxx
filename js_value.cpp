@@ -1,17 +1,29 @@
 #include "js_value.hpp"
 #include <cmath>
 
-JSValue::JSValue() : internal{new Box{JSUndefined{}}} {};
+JSValue::JSValue()
+    : internal{new Box{std::in_place_index<JSValueType::UNDEFINED>,
+                       JSUndefined{}}} {};
 // Copy
 JSValue::JSValue(const JSValue &v) : internal{new Box{*v.internal}} {};
 
-JSValue::JSValue(bool v) : internal{new Box{JSBool{v}}} {};
-JSValue::JSValue(JSBool v) : internal{new Box{v}} {};
-JSValue::JSValue(double v) : internal{new Box{JSNumber{v}}} {};
-JSValue::JSValue(JSNumber v) : internal{new Box{v}} {};
-JSValue::JSValue(const char *v) : internal{new Box{JSString{v}}} {};
-JSValue::JSValue(std::string v) : internal{new Box{JSString{v}}} {};
-JSValue::JSValue(JSString v) : internal{new Box{v}} {};
+JSValue::JSValue(bool v)
+    : internal{new Box{std::in_place_index<JSValueType::BOOL>, JSBool{v}}} {};
+JSValue::JSValue(JSBool v)
+    : internal{new Box{std::in_place_index<JSValueType::BOOL>, v}} {};
+JSValue::JSValue(double v)
+    : internal{
+          new Box{std::in_place_index<JSValueType::NUMBER>, JSNumber{v}}} {};
+JSValue::JSValue(JSNumber v)
+    : internal{new Box{std::in_place_index<JSValueType::NUMBER>, v}} {};
+JSValue::JSValue(const char *v)
+    : internal{
+          new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}} {};
+JSValue::JSValue(std::string v)
+    : internal{
+          new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}} {};
+JSValue::JSValue(JSString v)
+    : internal{new Box{std::in_place_index<JSValueType::STRING>, v}} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
 JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
@@ -22,7 +34,7 @@ JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
         {pair.first, JSValueBinding::with_value(pair.second)});
   }
   JSValue val{};
-  val.internal->emplace<JSValueInternalIndex::OBJECT>(obj);
+  val.internal->emplace<JSValueType::OBJECT>(obj);
   return val;
 }
 
@@ -37,41 +49,37 @@ JSValue JSValue::operator=(JSValue other) {
 // }
 
 JSValue JSValue::operator==(const JSValue other) {
-  if (this->type() == JSValueInternalIndex::NUMBER) {
+  if (this->type() == JSValueType::NUMBER) {
     return new JSValue{
-        std::get<JSValueInternalIndex::NUMBER>(*this->internal).internal ==
+        std::get<JSValueType::NUMBER>(*this->internal).internal ==
         other.coerce_to_double()};
   }
-  if (this->type() == JSValueInternalIndex::STRING) {
-    return JSValue{
-        std::get<JSValueInternalIndex::STRING>(*this->internal).internal ==
-        other.coerce_to_string()};
+  if (this->type() == JSValueType::STRING) {
+    return JSValue{std::get<JSValueType::STRING>(*this->internal).internal ==
+                   other.coerce_to_string()};
   }
   return JSValue{"Equality not implemented for this type yet"};
 }
 
 JSValue JSValue::operator+(JSValue other) {
-  if (this->type() == JSValueInternalIndex::NUMBER) {
-    return JSValue{
-        std::get<JSValueInternalIndex::NUMBER>(*this->internal).internal +
-        other.coerce_to_double()};
+  if (this->type() == JSValueType::NUMBER) {
+    return JSValue{std::get<JSValueType::NUMBER>(*this->internal).internal +
+                   other.coerce_to_double()};
   }
-  if (this->type() == JSValueInternalIndex::STRING) {
-    return JSValue{
-        std::get<JSValueInternalIndex::STRING>(*this->internal).internal +
-        other.coerce_to_string()};
+  if (this->type() == JSValueType::STRING) {
+    return JSValue{std::get<JSValueType::STRING>(*this->internal).internal +
+                   other.coerce_to_string()};
   }
   return new JSValue{"Addition not implemented for this type yet"};
 }
 
 JSValueBinding JSValue::operator[](const JSValue index) {
-  if (this->type() == JSValueInternalIndex::ARRAY &&
-      index.type() == JSValueInternalIndex::NUMBER) {
+  if (this->type() == JSValueType::ARRAY &&
+      index.type() == JSValueType::NUMBER) {
     return JSValueBinding::with_value(JSValue::undefined());
   }
-  if (this->type() == JSValueInternalIndex::OBJECT) {
-    shared_ptr<JSObject> obj =
-        std::get<JSValueInternalIndex::OBJECT>(*this->internal);
+  if (this->type() == JSValueType::OBJECT) {
+    shared_ptr<JSObject> obj = std::get<JSValueType::OBJECT>(*this->internal);
     return (*obj)[index];
   }
   return this->get_property(index);
@@ -83,47 +91,39 @@ JSValueBinding JSValue::operator[](const char *index) {
 
 JSValueBinding JSValue::get_property(const JSValue key) {
   switch (this->type()) {
-  case JSValueInternalIndex::UNDEFINED:
+  case JSValueType::UNDEFINED:
     return JSValueBinding::with_value(JSValue::undefined());
-  case JSValueInternalIndex::BOOL:
-    return std::get<JSValueInternalIndex::BOOL>(*this->internal)
-        .get_property(key);
-  case JSValueInternalIndex::NUMBER:
-    return std::get<JSValueInternalIndex::NUMBER>(*this->internal)
-        .get_property(key);
-  case JSValueInternalIndex::STRING:
-    return std::get<JSValueInternalIndex::STRING>(*this->internal)
-        .get_property(key);
-  case JSValueInternalIndex::ARRAY:
-    return std::get<JSValueInternalIndex::ARRAY>(*this->internal)
-        ->get_property(key);
-  case JSValueInternalIndex::OBJECT:
-    return std::get<JSValueInternalIndex::OBJECT>(*this->internal)
-        ->get_property(key);
-  case JSValueInternalIndex::EXCEPTION:
-    return std::get<JSValueInternalIndex::EXCEPTION>(*this->internal)
-        ->get_property(key);
+  case JSValueType::BOOL:
+    return std::get<JSValueType::BOOL>(*this->internal).get_property(key);
+  case JSValueType::NUMBER:
+    return std::get<JSValueType::NUMBER>(*this->internal).get_property(key);
+  case JSValueType::STRING:
+    return std::get<JSValueType::STRING>(*this->internal).get_property(key);
+  case JSValueType::ARRAY:
+    return std::get<JSValueType::ARRAY>(*this->internal)->get_property(key);
+  case JSValueType::OBJECT:
+    return std::get<JSValueType::OBJECT>(*this->internal)->get_property(key);
+  case JSValueType::EXCEPTION:
+    return std::get<JSValueType::EXCEPTION>(*this->internal)->get_property(key);
   }
 }
 
-JSValueInternalIndex JSValue::type() const {
-  return static_cast<JSValueInternalIndex>(this->internal->index());
+JSValueType JSValue::type() const {
+  return static_cast<JSValueType>(this->internal->index());
 }
 
 bool JSValue::is_undefined() const {
-  return this->type() == JSValueInternalIndex::UNDEFINED;
+  return this->type() == JSValueType::UNDEFINED;
 }
 
 double JSValue::coerce_to_double() const {
   switch (this->type()) {
-  case JSValueInternalIndex::BOOL:
-    return std::get<JSValueInternalIndex::BOOL>(*this->internal).internal ? 1
-                                                                          : 0;
-  case JSValueInternalIndex::NUMBER:
-    return std::get<JSValueInternalIndex::NUMBER>(*this->internal).internal;
-  case JSValueInternalIndex::STRING:
-    return std::stod(
-        std::get<JSValueInternalIndex::STRING>(*this->internal).internal);
+  case JSValueType::BOOL:
+    return std::get<JSValueType::BOOL>(*this->internal).internal ? 1 : 0;
+  case JSValueType::NUMBER:
+    return std::get<JSValueType::NUMBER>(*this->internal).internal;
+  case JSValueType::STRING:
+    return std::stod(std::get<JSValueType::STRING>(*this->internal).internal);
   default:
     return NAN;
   }
@@ -131,22 +131,22 @@ double JSValue::coerce_to_double() const {
 
 std::string JSValue::coerce_to_string() const {
   switch (this->type()) {
-  case JSValueInternalIndex::UNDEFINED:
+  case JSValueType::UNDEFINED:
     return "undefined";
-  case JSValueInternalIndex::BOOL:
-    return std::get<JSValueInternalIndex::BOOL>(*this->internal).internal
+  case JSValueType::BOOL:
+    return std::get<JSValueType::BOOL>(*this->internal).internal
                ? std::string{"true"}
                : std::string{"false"};
-  case JSValueInternalIndex::NUMBER:
+  case JSValueType::NUMBER:
     return std::to_string(
-        std::get<JSValueInternalIndex::NUMBER>(*this->internal).internal);
-  case JSValueInternalIndex::STRING:
-    return std::get<JSValueInternalIndex::STRING>(*this->internal).internal;
-  case JSValueInternalIndex::ARRAY:
+        std::get<JSValueType::NUMBER>(*this->internal).internal);
+  case JSValueType::STRING:
+    return std::get<JSValueType::STRING>(*this->internal).internal;
+  case JSValueType::ARRAY:
     return "[Array]"; // FIXME
-  case JSValueInternalIndex::OBJECT:
+  case JSValueType::OBJECT:
     return "[Object object]"; // FIXME?
-  case JSValueInternalIndex::EXCEPTION:
+  case JSValueType::EXCEPTION:
     return "[EXCEPTION]"; // FIXME?
   }
   return "?";
@@ -154,19 +154,19 @@ std::string JSValue::coerce_to_string() const {
 
 bool JSValue::coerce_to_bool() const {
   switch (this->type()) {
-  case JSValueInternalIndex::UNDEFINED:
+  case JSValueType::UNDEFINED:
     return false;
-  case JSValueInternalIndex::BOOL:
+  case JSValueType::BOOL:
     return std::get<JSBool>(*this->internal).internal;
-  case JSValueInternalIndex::NUMBER:
+  case JSValueType::NUMBER:
     return std::get<JSNumber>(*this->internal).internal > 0;
-  case JSValueInternalIndex::STRING:
+  case JSValueType::STRING:
     return std::get<JSString>(*this->internal).internal.length() > 0;
-  case JSValueInternalIndex::ARRAY:
+  case JSValueType::ARRAY:
     return false; // FIXME
-  case JSValueInternalIndex::OBJECT:
+  case JSValueType::OBJECT:
     return true; // FIXME
-  case JSValueInternalIndex::EXCEPTION:
+  case JSValueType::EXCEPTION:
     return true; // FIXME
   }
   return "?";
