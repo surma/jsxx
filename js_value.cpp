@@ -78,11 +78,15 @@ JSValueBinding JSValue::operator[](const JSValue index) {
       index.type() == JSValueType::NUMBER) {
     return JSValueBinding::with_value(JSValue::undefined());
   }
+  JSValueBinding vb;
   if (this->type() == JSValueType::OBJECT) {
     shared_ptr<JSObject> obj = std::get<JSValueType::OBJECT>(*this->internal);
-    return (*obj)[index];
+    vb = (*obj)[index];
+  } else {
+    vb = this->get_property(index);
   }
-  return this->get_property(index);
+  vb.parent_value = {shared_ptr<JSValue>{new JSValue{*this}}};
+  return vb;
 }
 
 JSValueBinding JSValue::operator[](const char *index) {

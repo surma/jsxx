@@ -1,10 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <variant>
 
 #include "js_value.hpp"
 
+using std::optional;
 using std::shared_ptr;
 
 class JSValue;
@@ -21,4 +23,5 @@ public:
   JSValue &get();
 
   shared_ptr<JSValue> internal;
+  optional<shared_ptr<JSValue>> parent_value = std::nullopt;
 };
