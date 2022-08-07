@@ -25,6 +25,13 @@ JSValue::JSValue(std::string v)
 JSValue::JSValue(JSString v)
     : internal{new Box{std::in_place_index<JSValueType::STRING>, v}} {};
 
+JSValue::JSValue(ExternFunc v)
+    : internal{new Box{std::in_place_index<JSValueType::FUNCTION>,
+                       JSFunction{v}}} {};
+JSValue::JSValue(JSFunction v)
+    : internal{new Box{std::in_place_index<JSValueType::FUNCTION>,
+                       JSFunction{v}}} {};
+
 JSValue JSValue::undefined() { return JSValue{}; }
 JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
   shared_ptr<JSObject> obj{new JSObject()};
@@ -93,6 +100,10 @@ JSValueBinding JSValue::operator[](const char *index) {
   return (*this)[JSValue{index}];
 }
 
+JSValue JSValue::operator()(JSValue args...) {
+  return this->apply(JSValue::undefined(), std::vector<JSValue>{args});
+}
+
 JSValueBinding JSValue::get_property(const JSValue key) {
   switch (this->type()) {
   case JSValueType::UNDEFINED:
@@ -107,6 +118,8 @@ JSValueBinding JSValue::get_property(const JSValue key) {
     return std::get<JSValueType::ARRAY>(*this->internal)->get_property(key);
   case JSValueType::OBJECT:
     return std::get<JSValueType::OBJECT>(*this->internal)->get_property(key);
+  case JSValueType::FUNCTION:
+    return std::get<JSValueType::FUNCTION>(*this->internal).get_property(key);
   case JSValueType::EXCEPTION:
     return std::get<JSValueType::EXCEPTION>(*this->internal)->get_property(key);
   }
@@ -150,6 +163,8 @@ std::string JSValue::coerce_to_string() const {
     return "[Array]"; // FIXME
   case JSValueType::OBJECT:
     return "[Object object]"; // FIXME?
+  case JSValueType::FUNCTION:
+    return "<function>"; // FIXME?
   case JSValueType::EXCEPTION:
     return "[EXCEPTION]"; // FIXME?
   }
@@ -170,8 +185,18 @@ bool JSValue::coerce_to_bool() const {
     return false; // FIXME
   case JSValueType::OBJECT:
     return true; // FIXME
+  case JSValueType::FUNCTION:
+    return true; // FIXME
   case JSValueType::EXCEPTION:
     return true; // FIXME
   }
   return "?";
+}
+
+JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
+  if (this->type() != JSValueType::FUNCTION) {
+    return JSValue::undefined(); // FIXME
+  }
+  JSFunction f = std::get<JSValueType::FUNCTION>(*this->internal);
+  return f.call(thisArg, args);
 }

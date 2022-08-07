@@ -19,6 +19,7 @@ public:
   static JSValueBinding with_value(JSValue val);
 
   void operator=(JSValue other);
+  JSValue operator()(JSValue args...);
 
   JSValue &get();
 

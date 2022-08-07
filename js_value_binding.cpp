@@ -8,6 +8,13 @@ JSValueBinding JSValueBinding::with_value(JSValue val) {
   b = val;
   return b;
 }
+
 void JSValueBinding::operator=(JSValue other) { this->get() = JSValue{other}; }
+
+JSValue JSValueBinding::operator()(JSValue args...) {
+  JSValue thisArg = *this->parent_value.value_or(
+      shared_ptr<JSValue>{new JSValue{JSValue::undefined()}});
+  return this->internal->apply(thisArg, std::vector<JSValue>{args});
+}
 
 JSValue &JSValueBinding::get() { return *this->internal; }

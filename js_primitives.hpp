@@ -60,10 +60,13 @@ public:
   std::vector<std::pair<JSValue, JSValueBinding>> internal;
 };
 
+using ExternFunc =
+    std::function<JSValue(JSValue, const std::vector<JSValue> &)>;
 class JSFunction : public JSBase {
-  using JSExternFunc = std::function<JSValue(const std::vector<JSValue> &)>;
 
 public:
-  JSFunction(JSExternFunc f);
-  JSExternFunc internal;
+  JSFunction(ExternFunc f);
+  ExternFunc internal;
+
+  JSValue call(JSValue thisArg, const std::vector<JSValue> &);
 };

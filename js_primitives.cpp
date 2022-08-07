@@ -21,7 +21,14 @@ JSValueBinding JSBase::get_property(JSValue key) {
 JSBool::JSBool(bool v) : JSBase(), internal{v} {};
 
 std::vector<std::pair<JSValue, JSValueBinding>> JSNumber_prototype{
-    {JSValue{"test"}, JSValueBinding::with_value(JSValue{9.0})}};
+    {JSValue{"test"}, JSValueBinding::with_value(JSValue{9.0})},
+    {JSValue{"plusOne"},
+     JSValueBinding::with_value(JSValue{
+         (ExternFunc)[](JSValue thisArg, const std::vector<JSValue> &args){
+             return JSValue{thisArg.coerce_to_double() + 1.0};}})
+}
+}
+;
 JSNumber::JSNumber(double v) : JSBase(), internal{v} {
   for (const auto &entry : JSNumber_prototype) {
     this->properties.push_back(entry);
@@ -45,4 +52,8 @@ JSValueBinding JSObject::operator[](const JSValue idx) {
   return (*obj).second;
 }
 
-JSFunction::JSFunction(JSExternFunc f) : JSBase(), internal{f} {};
+JSFunction::JSFunction(ExternFunc f) : JSBase(), internal{f} {};
+
+JSValue JSFunction::call(JSValue thisArg, const std::vector<JSValue> &args) {
+  return this->internal(thisArg, args);
+}
