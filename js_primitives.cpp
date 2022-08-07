@@ -1,18 +1,20 @@
 #include "js_primitives.hpp"
 
+static JSValue global_undefined;
+
 JSBase::JSBase() {}
 
 JSValue JSUndefined::operator==(JSValue &other) {
   return JSValue{other.is_undefined()};
 }
 
-JSValue JSBase::get_property(JSValue key) {
+JSValue &JSBase::get_property(JSValue key) {
   auto obj = std::find_if(this->properties.begin(), this->properties.end(),
                           [&](std::pair<JSValue, JSValue> &item) -> bool {
                             return (item.first == key).coerce_to_bool();
                           });
   if (obj == this->properties.end()) {
-    return JSValue::undefined();
+    return global_undefined;
   }
   return (*obj).second;
 }
@@ -33,13 +35,13 @@ JSString::JSString(std::string v) : JSBase(), internal{v} {};
 
 JSArray::JSArray() : JSBase(){};
 JSObject::JSObject() : JSBase(), internal{} {};
-JSValue JSObject::operator[](const JSValue idx) {
+JSValue &JSObject::operator[](const JSValue idx) {
   auto obj = std::find_if(this->internal.begin(), this->internal.end(),
                           [=](std::pair<JSValue, JSValue> &item) {
                             return (item.first == idx).coerce_to_bool();
                           });
   if (obj == this->internal.end()) {
-    return JSValue::undefined();
+    return global_undefined;
   }
   return (*obj).second;
 }

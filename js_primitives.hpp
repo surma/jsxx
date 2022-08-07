@@ -20,7 +20,7 @@ class JSBase {
 public:
   JSBase();
 
-  JSValue get_property(JSValue key);
+  JSValue &get_property(JSValue key);
 
   std::vector<std::pair<JSValue, JSValue>> properties;
 };
@@ -54,7 +54,7 @@ class JSObject : public JSBase {
 public:
   JSObject();
 
-  JSValue operator[](const JSValue idx);
+  JSValue &operator[](const JSValue idx);
   std::vector<std::pair<JSValue, JSValue>> internal;
 };
 

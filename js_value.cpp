@@ -1,6 +1,8 @@
 #include "js_value.hpp"
 #include <cmath>
 
+static JSValue global_undefined{};
+
 JSValue::JSValue() : internal{new Box{JSUndefined{}}} {};
 // Copy
 JSValue::JSValue(const JSValue &v) : internal{new Box{*v.internal}} {};
@@ -24,6 +26,16 @@ JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
   val.internal->emplace<JSValueInternalIndex::OBJECT>(obj);
   return val;
 }
+
+JSValue JSValue::operator=(JSValue other) {
+  this->internal = unique_ptr<JSValue::Box>{new JSValue::Box{*other.internal}};
+  return other;
+}
+
+// JSValue& JSValue::operator=(JSValue& other) {
+//   this->internal = unique_ptr<JSValue::Box>{new
+//   JSValue::Box{other.internal.get()}}; return other;
+// }
 
 JSValue JSValue::operator==(const JSValue other) {
   if (this->type() == JSValueInternalIndex::NUMBER) {
@@ -53,26 +65,27 @@ JSValue JSValue::operator+(JSValue other) {
   return new JSValue{"Addition not implemented for this type yet"};
 }
 
-JSValue JSValue::operator[](const JSValue index) {
+JSValue &JSValue::operator[](const JSValue index) {
   if (this->type() == JSValueInternalIndex::ARRAY &&
       index.type() == JSValueInternalIndex::NUMBER) {
-    return JSValue::undefined();
+    return global_undefined;
   }
   if (this->type() == JSValueInternalIndex::OBJECT) {
-    JSObject obj = *std::get<JSValueInternalIndex::OBJECT>(*this->internal);
-    return obj[index];
+    shared_ptr<JSObject> obj =
+        std::get<JSValueInternalIndex::OBJECT>(*this->internal);
+    return (*obj)[index];
   }
   return this->get_property(index);
 }
 
-JSValue JSValue::operator[](const char *index) {
+JSValue &JSValue::operator[](const char *index) {
   return (*this)[JSValue{index}];
 }
 
-JSValue JSValue::get_property(const JSValue key) {
+JSValue &JSValue::get_property(const JSValue key) {
   switch (this->type()) {
   case JSValueInternalIndex::UNDEFINED:
-    return JSValue::undefined();
+    return global_undefined;
   case JSValueInternalIndex::BOOL:
     return std::get<JSValueInternalIndex::BOOL>(*this->internal)
         .get_property(key);
