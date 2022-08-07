@@ -4,6 +4,7 @@
 #include <variant>
 
 #include "js_primitives.hpp"
+#include "js_value_binding.hpp"
 
 using std::shared_ptr;
 using std::unique_ptr;
@@ -45,14 +46,14 @@ public:
   // JSValue& operator=(JSValue& other);
   JSValue operator==(const JSValue other);
   JSValue operator+(JSValue other);
-  JSValue &operator[](const JSValue index);
-  JSValue &operator[](const char *index);
+  JSValueBinding operator[](const JSValue index);
+  JSValueBinding operator[](const char *index);
 
   static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
   static JSValue undefined();
   // static JSValue throww();
 
-  JSValue &get_property(const JSValue key);
+  JSValueBinding get_property(const JSValue key);
 
   JSValueInternalIndex type() const;
   double coerce_to_double() const;

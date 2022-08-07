@@ -1,8 +1,9 @@
-FILES = js_value.o js_primitives.o runtime.o
+FILES = js_value.o js_primitives.o js_value_binding.o runtime.o
 CXX = clang++
 LD = $(CXX)
 CFLAGS = \
-	-std=c++17
+	-std=c++17 \
+	-g
 LDFLAGS = ""
 OUTPUT = output
 

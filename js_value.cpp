@@ -1,8 +1,6 @@
 #include "js_value.hpp"
 #include <cmath>
 
-static JSValue global_undefined{};
-
 JSValue::JSValue() : internal{new Box{JSUndefined{}}} {};
 // Copy
 JSValue::JSValue(const JSValue &v) : internal{new Box{*v.internal}} {};
@@ -20,7 +18,8 @@ JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
   shared_ptr<JSObject> obj{new JSObject()};
 
   for (const auto &pair : pairs) {
-    obj->internal.push_back(pair);
+    obj->internal.push_back(
+        {pair.first, JSValueBinding::with_value(pair.second)});
   }
   JSValue val{};
   val.internal->emplace<JSValueInternalIndex::OBJECT>(obj);
@@ -65,10 +64,10 @@ JSValue JSValue::operator+(JSValue other) {
   return new JSValue{"Addition not implemented for this type yet"};
 }
 
-JSValue &JSValue::operator[](const JSValue index) {
+JSValueBinding JSValue::operator[](const JSValue index) {
   if (this->type() == JSValueInternalIndex::ARRAY &&
       index.type() == JSValueInternalIndex::NUMBER) {
-    return global_undefined;
+    return JSValueBinding::with_value(JSValue::undefined());
   }
   if (this->type() == JSValueInternalIndex::OBJECT) {
     shared_ptr<JSObject> obj =
@@ -78,14 +77,14 @@ JSValue &JSValue::operator[](const JSValue index) {
   return this->get_property(index);
 }
 
-JSValue &JSValue::operator[](const char *index) {
+JSValueBinding JSValue::operator[](const char *index) {
   return (*this)[JSValue{index}];
 }
 
-JSValue &JSValue::get_property(const JSValue key) {
+JSValueBinding JSValue::get_property(const JSValue key) {
   switch (this->type()) {
   case JSValueInternalIndex::UNDEFINED:
-    return global_undefined;
+    return JSValueBinding::with_value(JSValue::undefined());
   case JSValueInternalIndex::BOOL:
     return std::get<JSValueInternalIndex::BOOL>(*this->internal)
         .get_property(key);

@@ -7,10 +7,12 @@
 #include <vector>
 
 #include "js_value.hpp"
+#include "js_value_binding.hpp"
 
 using std::shared_ptr;
 
 class JSValue;
+class JSValueBinding;
 
 class JSUndefined {
   JSValue operator==(JSValue &other);
@@ -20,9 +22,9 @@ class JSBase {
 public:
   JSBase();
 
-  JSValue &get_property(JSValue key);
+  JSValueBinding get_property(JSValue key);
 
-  std::vector<std::pair<JSValue, JSValue>> properties;
+  std::vector<std::pair<JSValue, JSValueBinding>> properties;
 };
 
 class JSBool : public JSBase {
@@ -54,8 +56,8 @@ class JSObject : public JSBase {
 public:
   JSObject();
 
-  JSValue &operator[](const JSValue idx);
-  std::vector<std::pair<JSValue, JSValue>> internal;
+  JSValueBinding operator[](const JSValue idx);
+  std::vector<std::pair<JSValue, JSValueBinding>> internal;
 };
 
 class JSFunction : public JSBase {
