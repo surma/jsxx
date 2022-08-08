@@ -88,6 +88,14 @@ JSValue JSValue::operator+(JSValue other) {
   return new JSValue{"Addition not implemented for this type yet"};
 }
 
+JSValue JSValue::operator*(JSValue other) {
+  if (this->type() == JSValueType::NUMBER) {
+    return JSValue{std::get<JSValueType::NUMBER>(*this->internal).internal *
+                   other.coerce_to_double()};
+  }
+  return new JSValue{"Multiplication not implemented for this type yet"};
+}
+
 JSValueBinding JSValue::operator[](const JSValue index) {
   JSValueBinding vb;
   if (this->type() == JSValueType::OBJECT) {

@@ -56,6 +56,7 @@ public:
   // JSValue& operator=(JSValue& other);
   JSValue operator==(const JSValue other);
   JSValue operator+(JSValue other);
+  JSValue operator*(JSValue other);
   JSValueBinding operator[](const JSValue index);
   JSValueBinding operator[](const char *index);
   JSValueBinding operator[](const size_t index);

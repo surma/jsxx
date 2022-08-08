@@ -10,8 +10,8 @@ int main() {
   printf("%s\n", a["test"].get().coerce_to_string().c_str());
   printf("%s\n", b["map"]({JSValue::new_function(
                      [](JSValue thisArg, std::vector<JSValue> &args) {
-                       return JSValue{args[0].coerce_to_double() + 42.0 +
-                                      args[1].coerce_to_double() * 100};
+                       return args[0] + JSValue{42.0} +
+                              args[1] * JSValue{100.0};
                      })})["join"]({JSValue{","}})
                      .coerce_to_string()
                      .c_str());
