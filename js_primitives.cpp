@@ -47,9 +47,27 @@ std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
          JSArray result_arr{};
          for (auto v
               : args) {
-    result_arr.internal.push_back(JSValueBinding::with_value(f(v)));
+  result_arr.internal.push_back(JSValueBinding::with_value(f(v)));
          }
          return JSValue{result_arr};
+}
+,
+})
+}
+, {JSValue{"join"},
+     JSValueBinding::with_value(JSValue{(ExternFunc)[](
+         JSValue thisArg, const std::vector<JSValue> &args){
+         if (thisArg.type() != JSValueType::ARRAY) return JSValue::undefined();
+
+      	 std::string result = "";
+         if (args[0].type() != JSValueType::STRING) return JSValue::undefined();
+         auto del = args[0].coerce_to_string();
+         auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+         for (auto v
+              : arr->internal) {
+    result += v.get().coerce_to_string() + del;
+         }
+         return JSValue{result};
 }
 })
 }
