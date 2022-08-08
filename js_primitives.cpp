@@ -60,13 +60,13 @@ JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {
 JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
     return JSValue::undefined();
-  auto f = args[0];
+  JSValue f = args[0];
   if (f.type() != JSValueType::FUNCTION)
     return JSValue::undefined();
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
   JSArray result_arr{};
-  for (auto v : args) {
-    result_arr.internal.push_back(JSValueBinding::with_value(f(v)));
+  for (auto v : arr->internal) {
+    result_arr.internal.push_back(JSValueBinding::with_value(f(v.get())));
   }
   return JSValue{result_arr};
 }
