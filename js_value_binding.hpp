@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <variant>
+#include <vector>
 
 #include "js_value.hpp"
 
@@ -19,7 +20,7 @@ public:
   static JSValueBinding with_value(JSValue val);
 
   void operator=(JSValue other);
-  JSValue operator()(JSValue args...);
+  JSValue operator()(std::vector<JSValue> args);
 
   JSValue &get();
 

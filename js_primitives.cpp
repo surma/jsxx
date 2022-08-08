@@ -65,8 +65,9 @@ JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
     return JSValue::undefined();
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
   JSArray result_arr{};
-  for (auto v : arr->internal) {
-    result_arr.internal.push_back(JSValueBinding::with_value(f(v.get())));
+  for (int i = 0; i < arr->internal.size(); i++) {
+    result_arr.internal.push_back(JSValueBinding::with_value(
+        f({arr->internal[i].get(), JSValue{static_cast<double>(i)}})));
   }
   return JSValue{result_arr};
 }

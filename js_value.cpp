@@ -111,8 +111,8 @@ JSValueBinding JSValue::operator[](const size_t index) {
   return (*this)[JSValue{static_cast<double>(index)}];
 }
 
-JSValue JSValue::operator()(JSValue args...) {
-  return this->apply(JSValue::undefined(), std::vector<JSValue>{args});
+JSValue JSValue::operator()(std::vector<JSValue> args) {
+  return this->apply(JSValue::undefined(), args);
 }
 
 JSValueBinding JSValue::get_property(const JSValue key) {

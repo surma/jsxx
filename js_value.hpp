@@ -59,7 +59,7 @@ public:
   JSValueBinding operator[](const JSValue index);
   JSValueBinding operator[](const char *index);
   JSValueBinding operator[](const size_t index);
-  JSValue operator()(JSValue args...);
+  JSValue operator()(std::vector<JSValue> args);
 
   static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
   static JSValue new_array(std::vector<JSValue>);
