@@ -32,7 +32,7 @@ std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
          (ExternFunc) static_cast<ExternFuncPtr>(&JSArray::push_impl)})},
     {JSValue{"map"},
      JSValueBinding::with_value(JSValue{
-         (ExternFunc)[](JSValue thisArg, const std::vector<JSValue> &args){
+         (ExternFunc)[](JSValue thisArg, std::vector<JSValue> &args){
              if (thisArg.type() !=
                  JSValueType::ARRAY) return JSValue::undefined();
              auto f = args[0];
@@ -46,7 +46,7 @@ std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
 }
 , {JSValue{"join"},
      JSValueBinding::with_value(JSValue{(ExternFunc)[](
-         JSValue thisArg, const std::vector<JSValue> &args){
+         JSValue thisArg, std::vector<JSValue> &args){
          if (thisArg.type() != JSValueType::ARRAY) return JSValue::undefined();
 
       	 std::string result = "";
@@ -76,7 +76,7 @@ JSArray::JSArray(std::vector<JSValue> data) : JSArray() {
   }
 }
 
-JSValue JSArray::push_impl(JSValue thisArg, const std::vector<JSValue> &args) {
+JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
     return JSValue::undefined();
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
@@ -113,6 +113,6 @@ JSValueBinding JSObject::operator[](const JSValue idx) {
 
 JSFunction::JSFunction(ExternFunc f) : JSBase(), internal{f} {};
 
-JSValue JSFunction::call(JSValue thisArg, const std::vector<JSValue> &args) {
+JSValue JSFunction::call(JSValue thisArg, std::vector<JSValue> &args) {
   return this->internal(thisArg, args);
 }

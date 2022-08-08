@@ -55,7 +55,7 @@ public:
   JSValueBinding operator[](const JSValue idx);
   std::vector<JSValueBinding> internal;
 
-  static JSValue push_impl(JSValue thisArg, const std::vector<JSValue> &args);
+  static JSValue push_impl(JSValue thisArg, std::vector<JSValue> &args);
 };
 
 class JSObject : public JSBase {
@@ -67,14 +67,13 @@ public:
   std::vector<std::pair<JSValue, JSValueBinding>> internal;
 };
 
-using ExternFunc =
-    std::function<JSValue(JSValue, const std::vector<JSValue> &)>;
-using ExternFuncPtr = JSValue (*)(JSValue, const std::vector<JSValue> &);
+using ExternFunc = std::function<JSValue(JSValue, std::vector<JSValue> &)>;
+using ExternFuncPtr = JSValue (*)(JSValue, std::vector<JSValue> &);
 class JSFunction : public JSBase {
 
 public:
   JSFunction(ExternFunc f);
   ExternFunc internal;
 
-  JSValue call(JSValue thisArg, const std::vector<JSValue> &);
+  JSValue call(JSValue thisArg, std::vector<JSValue> &);
 };

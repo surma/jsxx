@@ -20,8 +20,7 @@ class JSFunction;
 // Idk what C++ wants from me... This type alias is defined in
 // `js_primitives.hpp` but the cyclic includes seem to make it impossible to see
 // that here.
-using ExternFunc =
-    std::function<JSValue(JSValue, const std::vector<JSValue> &)>;
+using ExternFunc = std::function<JSValue(JSValue, std::vector<JSValue> &)>;
 
 enum JSValueType : char {
   UNDEFINED,
