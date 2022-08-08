@@ -4,32 +4,36 @@
 JSValue::JSValue()
     : internal{new Box{std::in_place_index<JSValueType::UNDEFINED>,
                        JSUndefined{}}} {};
-// Copy
+
 JSValue::JSValue(const JSValue &v) : internal{new Box{*v.internal}} {};
 
 JSValue::JSValue(bool v)
     : internal{new Box{std::in_place_index<JSValueType::BOOL>, JSBool{v}}} {};
+
 JSValue::JSValue(JSBool v)
     : internal{new Box{std::in_place_index<JSValueType::BOOL>, v}} {};
+
 JSValue::JSValue(double v)
     : internal{
           new Box{std::in_place_index<JSValueType::NUMBER>, JSNumber{v}}} {};
+
 JSValue::JSValue(JSNumber v)
     : internal{new Box{std::in_place_index<JSValueType::NUMBER>, v}} {};
+
 JSValue::JSValue(const char *v)
     : internal{
           new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}} {};
+
 JSValue::JSValue(std::string v)
     : internal{
           new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}} {};
+
 JSValue::JSValue(JSString v)
     : internal{new Box{std::in_place_index<JSValueType::STRING>, v}} {};
 
-JSValue::JSValue(ExternFunc v)
-    : internal{new Box{std::in_place_index<JSValueType::FUNCTION>,
-                       JSFunction{v}}} {};
 JSValue::JSValue(JSFunction v)
     : internal{new Box{std::in_place_index<JSValueType::FUNCTION>, v}} {};
+
 JSValue::JSValue(JSObject v)
     : internal{new Box{std::in_place_index<JSValueType::OBJECT>,
                        shared_ptr<JSObject>{new JSObject{v}}}} {};
@@ -46,6 +50,8 @@ JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
 JSValue JSValue::new_array(std::vector<JSValue> values) {
   return JSValue{JSArray{values}};
 }
+
+JSValue JSValue::new_function(ExternFunc f) { return JSValue{JSFunction{f}}; }
 
 JSValue JSValue::operator=(JSValue other) {
   this->internal = unique_ptr<JSValue::Box>{new JSValue::Box{*other.internal}};

@@ -56,6 +56,8 @@ public:
   std::vector<JSValueBinding> internal;
 
   static JSValue push_impl(JSValue thisArg, std::vector<JSValue> &args);
+  static JSValue map_impl(JSValue thisArg, std::vector<JSValue> &args);
+  static JSValue join_impl(JSValue thisArg, std::vector<JSValue> &args);
 };
 
 class JSObject : public JSBase {

@@ -28,41 +28,12 @@ JSString::JSString(std::string v) : JSBase(), internal{v} {};
 
 std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
     {JSValue{"push"},
-     JSValueBinding::with_value(JSValue{
-         (ExternFunc) static_cast<ExternFuncPtr>(&JSArray::push_impl)})},
+     JSValueBinding::with_value(JSValue::new_function(&JSArray::push_impl))},
     {JSValue{"map"},
-     JSValueBinding::with_value(JSValue{
-         (ExternFunc)[](JSValue thisArg, std::vector<JSValue> &args){
-             if (thisArg.type() !=
-                 JSValueType::ARRAY) return JSValue::undefined();
-             auto f = args[0];
-             if (f.type() != JSValueType::FUNCTION) return JSValue::undefined();
-             auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
-             JSArray result_arr{}; for (auto v
-                                        : args) {
-               result_arr.internal.push_back(JSValueBinding::with_value(f(v)));
-             } return JSValue{result_arr};},
-     })
-}
-, {JSValue{"join"},
-     JSValueBinding::with_value(JSValue{(ExternFunc)[](
-         JSValue thisArg, std::vector<JSValue> &args){
-         if (thisArg.type() != JSValueType::ARRAY) return JSValue::undefined();
-
-      	 std::string result = "";
-         if (args[0].type() != JSValueType::STRING) return JSValue::undefined();
-         auto del = args[0].coerce_to_string();
-         auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
-         for (auto v
-              : arr->internal) {
-    result += v.get().coerce_to_string() + del;
-         }
-         return JSValue{result};
-}
-})
-}
-}
-;
+     JSValueBinding::with_value(JSValue::new_function(&JSArray::map_impl))},
+    {JSValue{"join"},
+     JSValueBinding::with_value(JSValue::new_function(&JSArray::join_impl))},
+};
 
 JSArray::JSArray() : JSBase() {
   for (const auto &entry : JSArray_prototype) {
@@ -84,6 +55,37 @@ JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {
     arr->internal.push_back(JSValueBinding::with_value(v));
   }
   return JSValue::undefined();
+}
+
+JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
+  if (thisArg.type() != JSValueType::ARRAY)
+    return JSValue::undefined();
+  auto f = args[0];
+  if (f.type() != JSValueType::FUNCTION)
+    return JSValue::undefined();
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  JSArray result_arr{};
+  for (auto v : args) {
+    result_arr.internal.push_back(JSValueBinding::with_value(f(v)));
+  }
+  return JSValue{result_arr};
+}
+
+JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {
+  if (thisArg.type() != JSValueType::ARRAY)
+    return JSValue::undefined();
+
+  std::string delimiter = "";
+  std::string result = "";
+  if (args.size() > 0 && args[0].type() == JSValueType::STRING) {
+    delimiter = args[0].coerce_to_string();
+  }
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  for (auto v : arr->internal) {
+    result += v.get().coerce_to_string() + delimiter;
+  }
+  result = result.substr(0, result.size() - delimiter.size());
+  return JSValue{result};
 }
 
 JSValueBinding JSArray::operator[](const JSValue idx) {

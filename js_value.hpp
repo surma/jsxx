@@ -48,7 +48,6 @@ public:
   JSValue(std::string v);
   JSValue(JSString v);
   JSValue(const JSValue &v);
-  JSValue(ExternFunc v);
   JSValue(JSFunction v);
   JSValue(JSObject v);
   JSValue(JSArray v);
@@ -64,6 +63,7 @@ public:
 
   static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
   static JSValue new_array(std::vector<JSValue>);
+  static JSValue new_function(ExternFunc f);
   static JSValue undefined();
   // static JSValue throww();
 
