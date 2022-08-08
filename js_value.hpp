@@ -51,6 +51,8 @@ public:
   JSValue(const JSValue &v);
   JSValue(ExternFunc v);
   JSValue(JSFunction v);
+  JSValue(JSObject v);
+  JSValue(JSArray v);
 
   JSValue operator=(JSValue other);
   // JSValue& operator=(JSValue& other);
@@ -58,9 +60,11 @@ public:
   JSValue operator+(JSValue other);
   JSValueBinding operator[](const JSValue index);
   JSValueBinding operator[](const char *index);
+  JSValueBinding operator[](const size_t index);
   JSValue operator()(JSValue args...);
 
   static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
+  static JSValue new_array(std::vector<JSValue>);
   static JSValue undefined();
   // static JSValue throww();
 

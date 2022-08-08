@@ -20,34 +20,74 @@ JSValueBinding JSBase::get_property(JSValue key) {
 
 JSBool::JSBool(bool v) : JSBase(), internal{v} {};
 
-std::vector<std::pair<JSValue, JSValueBinding>> JSNumber_prototype{
-    {JSValue{"test"}, JSValueBinding::with_value(JSValue{9.0})},
-    {JSValue{"plusOne"},
-     JSValueBinding::with_value(JSValue{
-         (ExternFunc)[](JSValue thisArg, const std::vector<JSValue> &args){
-             return JSValue{thisArg.coerce_to_double() + 1.0};}})
-}
-}
-;
-JSNumber::JSNumber(double v) : JSBase(), internal{v} {
-  for (const auto &entry : JSNumber_prototype) {
-    this->properties.push_back(entry);
-  }
-};
+JSNumber::JSNumber(double v) : JSBase(), internal{v} {};
 
 JSString::JSString(const char *v) : JSBase(), internal{std::string(v)} {};
 
 JSString::JSString(std::string v) : JSBase(), internal{v} {};
 
-JSArray::JSArray() : JSBase(){};
+std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
+    {JSValue{"push"},
+     JSValueBinding::with_value(JSValue{(ExternFunc)[](
+         JSValue thisArg, const std::vector<JSValue> &args){
+         if (thisArg.type() != JSValueType::ARRAY) return JSValue::undefined();
+         auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+         for (auto v
+              : args) {
+           arr->internal.push_back(JSValueBinding::with_value(v));
+         } return JSValue::undefined();}})
+}
+, {JSValue{"map"},
+     JSValueBinding::with_value(JSValue{(ExternFunc)[](
+         JSValue thisArg, const std::vector<JSValue> &args){
+         if (thisArg.type() != JSValueType::ARRAY) return JSValue::undefined();
+         auto f = args[0];
+         if (f.type() != JSValueType::FUNCTION) return JSValue::undefined();
+         auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+         JSArray result_arr{};
+         for (auto v
+              : args) {
+    result_arr.internal.push_back(JSValueBinding::with_value(f(v)));
+         }
+         return JSValue{result_arr};
+}
+})
+}
+}
+;
+
+JSArray::JSArray() : JSBase() {
+  for (const auto &entry : JSArray_prototype) {
+    this->properties.push_back(entry);
+  }
+};
+JSArray::JSArray(std::vector<JSValue> data) : JSArray() {
+  for (auto v : data) {
+    this->internal.push_back(JSValueBinding::with_value(v));
+  }
+}
+
+JSValueBinding JSArray::operator[](const JSValue idx) {
+  if (idx.type() != JSValueType::NUMBER) {
+    return this->get_property(idx);
+  }
+  return this->internal[static_cast<size_t>(idx.coerce_to_double())];
+}
+
 JSObject::JSObject() : JSBase(), internal{} {};
+JSObject::JSObject(std::vector<std::pair<JSValue, JSValue>> data) : JSObject() {
+  for (auto v : data) {
+    this->internal.push_back({v.first, JSValueBinding::with_value(v.second)});
+  }
+};
+
 JSValueBinding JSObject::operator[](const JSValue idx) {
   auto obj = std::find_if(this->internal.begin(), this->internal.end(),
                           [=](std::pair<JSValue, JSValueBinding> &item) {
                             return (item.first == idx).coerce_to_bool();
                           });
   if (obj == this->internal.end()) {
-    return JSValueBinding::with_value(JSValue::undefined());
+    return this->get_property(idx);
   }
   return (*obj).second;
 }

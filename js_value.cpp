@@ -29,20 +29,22 @@ JSValue::JSValue(ExternFunc v)
     : internal{new Box{std::in_place_index<JSValueType::FUNCTION>,
                        JSFunction{v}}} {};
 JSValue::JSValue(JSFunction v)
-    : internal{new Box{std::in_place_index<JSValueType::FUNCTION>,
-                       JSFunction{v}}} {};
+    : internal{new Box{std::in_place_index<JSValueType::FUNCTION>, v}} {};
+JSValue::JSValue(JSObject v)
+    : internal{new Box{std::in_place_index<JSValueType::OBJECT>,
+                       shared_ptr<JSObject>{new JSObject{v}}}} {};
+
+JSValue::JSValue(JSArray v)
+    : internal{new Box{std::in_place_index<JSValueType::ARRAY>,
+                       shared_ptr<JSArray>{new JSArray{v}}}} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
 JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
-  shared_ptr<JSObject> obj{new JSObject()};
+  return JSValue{JSObject{pairs}};
+}
 
-  for (const auto &pair : pairs) {
-    obj->internal.push_back(
-        {pair.first, JSValueBinding::with_value(pair.second)});
-  }
-  JSValue val{};
-  val.internal->emplace<JSValueType::OBJECT>(obj);
-  return val;
+JSValue JSValue::new_array(std::vector<JSValue> values) {
+  return JSValue{JSArray{values}};
 }
 
 JSValue JSValue::operator=(JSValue other) {
@@ -81,13 +83,12 @@ JSValue JSValue::operator+(JSValue other) {
 }
 
 JSValueBinding JSValue::operator[](const JSValue index) {
-  if (this->type() == JSValueType::ARRAY &&
-      index.type() == JSValueType::NUMBER) {
-    return JSValueBinding::with_value(JSValue::undefined());
-  }
   JSValueBinding vb;
   if (this->type() == JSValueType::OBJECT) {
     shared_ptr<JSObject> obj = std::get<JSValueType::OBJECT>(*this->internal);
+    vb = (*obj)[index];
+  } else if (this->type() == JSValueType::ARRAY) {
+    shared_ptr<JSArray> obj = std::get<JSValueType::ARRAY>(*this->internal);
     vb = (*obj)[index];
   } else {
     vb = this->get_property(index);
@@ -98,6 +99,10 @@ JSValueBinding JSValue::operator[](const JSValue index) {
 
 JSValueBinding JSValue::operator[](const char *index) {
   return (*this)[JSValue{index}];
+}
+
+JSValueBinding JSValue::operator[](const size_t index) {
+  return (*this)[JSValue{static_cast<double>(index)}];
 }
 
 JSValue JSValue::operator()(JSValue args...) {

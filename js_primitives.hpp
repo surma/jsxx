@@ -50,11 +50,16 @@ public:
 class JSArray : public JSBase {
 public:
   JSArray();
+  JSArray(std::vector<JSValue> data);
+
+  JSValueBinding operator[](const JSValue idx);
+  std::vector<JSValueBinding> internal;
 };
 
 class JSObject : public JSBase {
 public:
   JSObject();
+  JSObject(std::vector<std::pair<JSValue, JSValue>> data);
 
   JSValueBinding operator[](const JSValue idx);
   std::vector<std::pair<JSValue, JSValueBinding>> internal;
