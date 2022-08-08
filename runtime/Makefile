@@ -24,4 +24,4 @@ $(OUTPUT): $(FILES)
 	$(CXX) $(CFLAGS) -o $@ -c $<
 
 clean:
-	@rm -rf $(FILES) $(OUTPUT) $(basename $(TESTPROG))
+	@rm -rf $(FILES) $(OUTPUT) $(basename $(TESTPROG)) *.dSYM

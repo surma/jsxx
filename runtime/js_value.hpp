@@ -66,7 +66,6 @@ public:
   static JSValue new_array(std::vector<JSValue>);
   static JSValue new_function(ExternFunc f);
   static JSValue undefined();
-  // static JSValue throww();
 
   JSValueBinding get_property(const JSValue key);
   JSValue apply(JSValue thisArg, std::vector<JSValue> args);
