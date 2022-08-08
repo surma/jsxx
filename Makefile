@@ -1,21 +1,27 @@
-FILES = js_value.o js_primitives.o js_value_binding.o runtime.o
+FILES = js_value.o js_primitives.o js_value_binding.o
 CXX = clang++
 LD = $(CXX)
+AR = llvm-ar
 CFLAGS = \
 	-std=c++17 \
 	-g
 LDFLAGS = ""
-OUTPUT = output
+OUTPUT = runtime.a
+TESTPROG = testprog.cpp
 
 .PHONEY: all
 
 all: $(OUTPUT)
 
+testprog: $(OUTPUT)
+	$(CXX) $(CFLAGS) -o $(basename $(TESTPROG)) $(TESTPROG) $(OUTPUT)
+
+
 $(OUTPUT): $(FILES)
-	$(LD) -o $@ $^
+	$(AR) rc $@ $^
 
 %.o: %.cpp
 	$(CXX) $(CFLAGS) -o $@ -c $<
 
 clean:
-	@rm -rf $(FILES) $(OUTPUT)
+	@rm -rf $(FILES) $(OUTPUT) $(basename $(TESTPROG))
