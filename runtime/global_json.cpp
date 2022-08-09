@@ -1,7 +1,7 @@
 
 #include "global_wasi.hpp"
 
-#include <unistd.h>
+#include <variant>
 #include <vector>
 
 static JSValue json_parse_value(const char **input);
@@ -102,8 +102,54 @@ static JSValue json_parse(JSValue thisArg, std::vector<JSValue> &args) {
   return json_parse_value(&c);
 }
 
+static std::string json_stringify_value(JSValue v);
+
+static std::string json_stringify_object(JSObject v) {
+  std::string result = "{";
+  for (auto v : v.internal) {
+    result += json_stringify_value(v.first);
+    result += ":";
+    result += json_stringify_value(v.second.get());
+    result += ",";
+  }
+  result = result.substr(0, result.size() - 1);
+  result += "}";
+  return result;
+}
+
+static std::string json_stringify_array(JSArray v) {
+  std::string result = "[";
+  for (auto v : v.internal) {
+    result += json_stringify_value(v.get());
+    result += ",";
+  }
+  result = result.substr(0, result.size() - 1);
+  result += "]";
+  return result;
+}
+
+static std::string json_stringify_number(JSNumber v) {
+  return std::to_string(v.internal);
+}
+
+static std::string json_stringify_string(JSString v) {
+  return std::string("\"" + v.internal + "\"");
+}
+
+static std::string json_stringify_value(JSValue v) {
+  if (v.type() == JSValueType::ARRAY)
+    return json_stringify_array(*std::get<JSValueType::ARRAY>(*v.internal));
+  if (v.type() == JSValueType::OBJECT)
+    return json_stringify_object(*std::get<JSValueType::OBJECT>(*v.internal));
+  if (v.type() == JSValueType::NUMBER)
+    return json_stringify_number(std::get<JSValueType::NUMBER>(*v.internal));
+  if (v.type() == JSValueType::STRING)
+    return json_stringify_string(std::get<JSValueType::STRING>(*v.internal));
+  return "<IDK MAN>";
+}
+
 static JSValue json_stringify(JSValue thisArg, std::vector<JSValue> &args) {
-  return JSValue{true};
+  return JSValue{json_stringify_value(args[0])};
 }
 
 JSValue create_JSON_global() {
