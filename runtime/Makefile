@@ -1,4 +1,4 @@
-FILES = js_value.o js_primitives.o js_value_binding.o global_wasi.o
+FILES = js_value.o js_primitives.o js_value_binding.o global_wasi.o global_json.o
 CXX = clang++
 LD = $(CXX)
 AR = llvm-ar

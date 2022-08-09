@@ -13,7 +13,7 @@ static JSValue write_to_stdout(JSValue thisArg, std::vector<JSValue> &args) {
   return JSValue{true};
 }
 
-JSValue create_WASI_global() {
+static JSValue read_from_stdin(JSValue thisArg, std::vector<JSValue> &args) {
   char buf[1024];
   std::string input{};
   while (true) {
@@ -23,9 +23,12 @@ JSValue create_WASI_global() {
     if (n < 1023)
       break;
   };
+  return JSValue{input};
+}
 
+JSValue create_WASI_global() {
   JSValue global = JSValue::new_object(
-      {{JSValue{"stdin"}, JSValue{input}},
+      {{JSValue{"read_from_stdin"}, JSValue::new_function(read_from_stdin)},
        {JSValue{"write_to_stdout"}, JSValue::new_function(write_to_stdout)}});
 
   return global;
