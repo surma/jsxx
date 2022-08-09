@@ -42,6 +42,8 @@ JSValue::JSValue(JSArray v)
     : internal{new Box{std::in_place_index<JSValueType::ARRAY>,
                        shared_ptr<JSArray>{new JSArray{v}}}} {};
 
+JSValue::JSValue(JSValueBinding v) : internal{new Box{*v.get().internal}} {};
+
 JSValue JSValue::undefined() { return JSValue{}; }
 JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
   return JSValue{JSObject{pairs}};

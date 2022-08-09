@@ -51,6 +51,7 @@ public:
   JSValue(JSFunction v);
   JSValue(JSObject v);
   JSValue(JSArray v);
+  JSValue(JSValueBinding v);
 
   JSValue operator=(JSValue other);
   // JSValue& operator=(JSValue& other);

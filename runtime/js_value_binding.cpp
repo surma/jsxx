@@ -21,4 +21,8 @@ JSValue JSValueBinding::operator()(std::vector<JSValue> args) {
   return this->internal->apply(thisArg, args);
 }
 
+JSValueBinding JSValueBinding::operator[](const JSValue index) {
+  return this->get()[index];
+}
+
 JSValue &JSValueBinding::get() { return *this->internal; }

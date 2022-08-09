@@ -9,8 +9,14 @@ using std::shared_ptr;
 int main() {
   JSValue WASI = create_WASI_global();
   JSValue JSON = create_JSON_global();
-  JSValue a = JSON["parse"]({JSValue{"{\"a\": [1, 2, 123]}"}});
+  JSValue input{R"({
+    "data": [1, 2, 3, 4],
+    "add": 123
+  })"};
+  JSValue a = JSON["parse"]({input});
+
   JSValue b = JSON["stringify"]({a});
   WASI["write_to_stdout"]({JSValue{""} + b});
+  // WASI["write_to_stdout"]({JSValue{""} + input});
   return 0;
 }

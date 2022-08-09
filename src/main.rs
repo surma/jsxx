@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
 
     let mut transpiler = transpiler::Transpiler {
-        globals: vec![globals::wasi::WASIGlobal()],
+        globals: vec![globals::wasi::WASIGlobal(), globals::json::JSONGlobal()],
     };
     let result = transpiler.transpile_module(&module)?;
     println!("{}", result);

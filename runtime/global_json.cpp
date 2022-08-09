@@ -8,7 +8,7 @@ static JSValue json_parse_value(const char **input);
 
 static void eat_whitespace(const char **cur) {
   while (true) {
-    bool is_whitespace = **cur == ' ' || **cur == '\n';
+    bool is_whitespace = **cur == ' ' || **cur == '\n' || **cur == '\t';
     if (!is_whitespace)
       break;
     (*cur)++;
@@ -59,7 +59,7 @@ static JSValue json_parse_object(const char **cur) {
     obj.internal.push_back({key, JSValueBinding::with_value(value)});
     eat_whitespace(cur);
     if (**cur == ',')
-      cur++;
+      (*cur)++;
     eat_whitespace(cur);
   }
   (*cur)++;
@@ -83,6 +83,7 @@ static JSValue json_parse_array(const char **cur) {
 }
 
 static JSValue json_parse_value(const char **input) {
+  eat_whitespace(input);
   if (**input == '"')
     return json_parse_string(input);
   if (**input == '{')

@@ -175,10 +175,10 @@ impl Transpiler {
             _ => return Err(anyhow!("Unsupported body {:?}", arrow_expr.body)),
         };
         Ok(format!(
-            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) {{
-					{}
-					{}
-				}})",
+            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{
+                    {}
+                    {}
+                }})",
             param_destructure, body
         ))
     }
@@ -189,7 +189,7 @@ impl Transpiler {
             MemberProp::Ident(ident) => format!("{}", ident.sym),
             _ => return Err(anyhow!("Unsupported member prop {:?}", member_expr.prop)),
         };
-        Ok(format!(r#"{}["{}"]"#, obj, prop))
+        Ok(format!(r#"{}[JSValue{{"{}"}}]"#, obj, prop))
     }
 
     fn transpile_call_expr(&mut self, call_expr: &CallExpr) -> Result<String> {
