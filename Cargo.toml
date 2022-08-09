@@ -1,0 +1,15 @@
+[package]
+name = "jsxx"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+swc_ecma_parser =  "0.117.0"
+swc_ecma_visit = "0.76.0"
+swc_common = "0.27.0"
+thiserror = "1.0.32"
+anyhow = "1.0.43"
+
+[dev-dependencies]
+wasmtime = "0.29.0"
+anyhow = "1.0.43"
