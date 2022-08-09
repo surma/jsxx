@@ -1,4 +1,4 @@
-FILES = js_value.o js_primitives.o js_value_binding.o
+FILES = js_value.o js_primitives.o js_value_binding.o global_wasi.o
 CXX = clang++
 LD = $(CXX)
 AR = llvm-ar
@@ -13,8 +13,8 @@ TESTPROG = testprog.cpp
 
 all: $(OUTPUT)
 
-testprog: $(OUTPUT)
-	$(CXX) $(CFLAGS) -o $(basename $(TESTPROG)) $(TESTPROG) $(OUTPUT)
+testprog: $(OUTPUT) $(TESTPROG)
+	$(CXX) $(CFLAGS) -o $(basename $(TESTPROG)) $^
 
 
 $(OUTPUT): $(FILES)
