@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmtOrExpr, CallExpr, Decl, Expr, ExprOrSpread,
-    Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, Pat, Stmt, VarDecl, VarDeclKind,
-    VarDeclarator,
+    Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, Pat, Stmt, Str, TaggedTpl, Tpl,
+    VarDecl, VarDeclKind, VarDeclarator,
 };
 
 pub struct Transpiler {}
@@ -23,7 +23,7 @@ impl Transpiler {
             .collect();
         Ok(format!(
             r#"
-		#include "runtime/js_value.h";
+		#include "runtime/js_value.hpp"
 
 		int main() {{
 			{}
@@ -82,8 +82,26 @@ impl Transpiler {
             Expr::Member(member_expr) => self.transpile_member_expr(member_expr),
             Expr::Arrow(arrow_expr) => self.transpile_arrow_expr(arrow_expr),
             Expr::Bin(bin_expr) => self.transpile_bin_expr(bin_expr),
+            Expr::Tpl(tpl_expr) => self.transpile_tpl_expr(tpl_expr),
+            Expr::TaggedTpl(tagged_tpl_expr) => self.transpile_tagged_tpl_expr(tagged_tpl_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
+    }
+
+    fn transpile_tpl_expr(&mut self, tpl_expr: &Tpl) -> Result<String> {
+        if tpl_expr.quasis.len() > 1 {
+            return Err(anyhow!("No support for template string interpolation yet"));
+        }
+        Ok(format!(r#""{}""#, tpl_expr.quasis[0].raw))
+    }
+
+    fn transpile_tagged_tpl_expr(&mut self, tagged_tpl_expr: &TaggedTpl) -> Result<String> {
+        let tag = self.transpile_expr(&tagged_tpl_expr.tag)?;
+        let tpl = self.transpile_tpl_expr(&tagged_tpl_expr.tpl)?;
+        if tag == "raw_cpp" {
+            return Ok(tpl[1..tpl.len() - 1].to_string());
+        }
+        Err(anyhow!("No support for tagged template expressions"))
     }
 
     fn transpile_bin_expr(&mut self, bin_expr: &BinExpr) -> Result<String> {
@@ -101,21 +119,28 @@ impl Transpiler {
         let transpiled_params: Vec<Result<String>> = arrow_expr
             .params
             .iter()
-            .map(|param| {
+            .enumerate()
+            .map(|(idx, param)| {
                 param
                     .as_ident()
-                    .map(|ident| format!("{}", ident.sym))
+                    .map(|ident| format!("JSValue {} = args[{}];", ident.sym, idx))
                     .ok_or(anyhow!(
                         "Only straight-up identifiers are supported as function parameters"
                     ))
             })
             .collect();
-        let param_list = Result::<Vec<String>>::from_iter(transpiled_params)?.join(", ");
+        let param_destructure = Result::<Vec<String>>::from_iter(transpiled_params)?.join(";");
         let body = match &arrow_expr.body {
-            BlockStmtOrExpr::Expr(expr) => format!("{{ return {}; }}", self.transpile_expr(expr)?),
+            BlockStmtOrExpr::Expr(expr) => format!("return {};", self.transpile_expr(expr)?),
             _ => return Err(anyhow!("Unsupported body {:?}", arrow_expr.body)),
         };
-        Ok(format!("[=]({}){}", param_list, body))
+        Ok(format!(
+            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) {{
+					{}
+					{}
+				}})",
+            param_destructure, body
+        ))
     }
 
     fn transpile_member_expr(&mut self, member_expr: &MemberExpr) -> Result<String> {
@@ -140,7 +165,7 @@ impl Transpiler {
             .map(|arg| self.transpile_expr(&arg.expr))
             .collect();
         let arg_expr = Result::<Vec<String>>::from_iter(transpiled_args)?.join(",");
-        Ok(format!("{}({})", callee, arg_expr))
+        Ok(format!("{}({{{}}})", callee, arg_expr))
     }
 
     fn transpile_array_literal(&mut self, array_lit: &ArrayLit) -> Result<String> {
@@ -170,8 +195,13 @@ impl Transpiler {
     fn transpile_literal(&mut self, lit: &Lit) -> Result<String> {
         match lit {
             Lit::Num(num) => self.transpile_number(num),
+            Lit::Str(str) => self.transpile_string(str),
             _ => Err(anyhow!("Unsupported literal {:?}", lit)),
         }
+    }
+
+    fn transpile_string(&mut self, string: &Str) -> Result<String> {
+        Ok(format!(r#""{}""#, string.value))
     }
 
     fn transpile_number(&mut self, num: &Number) -> Result<String> {

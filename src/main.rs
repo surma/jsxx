@@ -8,7 +8,8 @@ fn main() -> Result<()> {
     let input = r#"
 		let a = 4;
 		let b = [1, 2, 3];
-		b.map(x => x + a);
+		let c = b.map(x => x + a).join(`,`);
+		raw_cpp`printf("%s\n", c.coerce_to_string().c_str());`
 	"#;
     let syntax = Syntax::Es(EsConfig::default());
     let lexer = Lexer::new(
