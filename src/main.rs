@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use anyhow::{anyhow, Result};
 use swc_common::BytePos;
 use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser, StringInput, Syntax};
@@ -5,12 +7,9 @@ use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser, StringInput, Syntax};
 mod transpiler;
 
 fn main() -> Result<()> {
-    let input = r#"
-		let a = 4;
-		let b = [1, 2, 3];
-		let c = b.map(x => x + a).join(`,`);
-		raw_cpp`printf("%s\n", c.coerce_to_string().c_str());`
-	"#;
+    let mut input: String = String::new();
+    std::io::stdin().read_to_string(&mut input)?;
+
     let syntax = Syntax::Es(EsConfig::default());
     let lexer = Lexer::new(
         syntax,
