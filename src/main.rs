@@ -2,10 +2,12 @@ use anyhow::{anyhow, Result};
 use swc_common::BytePos;
 use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser, StringInput, Syntax};
 
+mod transpiler;
+
 fn main() -> Result<()> {
     let input = r#"
-		const a = 4;
-		const b = [1, 2, 3];
+		let a = 4;
+		let b = [1, 2, 3];
 		b.map(x => x + a);
 	"#;
     let syntax = Syntax::Es(EsConfig::default());
@@ -23,6 +25,9 @@ fn main() -> Result<()> {
     let module = parser
         .parse_module()
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
-    println!("{:?}", module);
+
+    let mut transpiler = transpiler::Transpiler {};
+    let result = transpiler.transpile_module(&module)?;
+    println!("{}", result);
     Ok(())
 }
