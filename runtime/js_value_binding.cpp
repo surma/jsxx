@@ -10,6 +10,10 @@ JSValueBinding JSValueBinding::with_value(JSValue val) {
 }
 
 void JSValueBinding::operator=(JSValue other) { this->get() = JSValue{other}; }
+JSValue JSValueBinding::operator+(JSValue other) { return this->get() + other; }
+JSValue JSValueBinding::operator+(JSValueBinding other) {
+  return this->get() + other.get();
+}
 
 JSValue JSValueBinding::operator()(std::vector<JSValue> args) {
   JSValue thisArg = *this->parent_value.value_or(

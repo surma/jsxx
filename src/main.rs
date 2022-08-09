@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use swc_common::BytePos;
 use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser, StringInput, Syntax};
 
+mod globals;
 mod transpiler;
 
 fn main() -> Result<()> {
@@ -26,7 +27,9 @@ fn main() -> Result<()> {
         .parse_module()
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
 
-    let mut transpiler = transpiler::Transpiler {};
+    let mut transpiler = transpiler::Transpiler {
+        globals: vec![globals::wasi::WASIGlobal()],
+    };
     let result = transpiler.transpile_module(&module)?;
     println!("{}", result);
     Ok(())

@@ -21,6 +21,8 @@ public:
 
   void operator=(JSValue other);
   JSValue operator()(std::vector<JSValue> args);
+  JSValue operator+(JSValue other);
+  JSValue operator+(JSValueBinding other);
 
   JSValue &get();
 

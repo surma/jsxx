@@ -8,7 +8,7 @@ static JSValue write_to_stdout(JSValue thisArg, std::vector<JSValue> &args) {
   JSValue data = args[0];
   if (data.type() != JSValueType::STRING)
     return JSValue::undefined();
-	std::string str = data.coerce_to_string();
+  std::string str = data.coerce_to_string();
   write(1, str.c_str(), str.size());
   return JSValue{true};
 }

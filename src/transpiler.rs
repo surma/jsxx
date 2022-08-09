@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::{anyhow, Result};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmtOrExpr, CallExpr, Decl, Expr, ExprOrSpread,
@@ -5,10 +7,42 @@ use swc_ecma_ast::{
     VarDecl, VarDeclKind, VarDeclarator,
 };
 
-pub struct Transpiler {}
+pub struct Transpiler {
+    pub globals: Vec<crate::globals::Global>,
+}
 
 impl Transpiler {
     pub fn transpile_module(&mut self, module: &Module) -> Result<String> {
+        let additional_headers: HashSet<String> = self
+            .globals
+            .iter()
+            .flat_map(|global| {
+                global
+                    .additional_headers
+                    .clone()
+                    .unwrap_or(vec![])
+                    .into_iter()
+            })
+            .collect();
+        let additional_includes: String = additional_headers
+            .into_iter()
+            .map(|include| format!(r#"#include "{}""#, include))
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let inits = self
+            .globals
+            .iter()
+            .map(|global| global.init.clone().unwrap_or("".into()))
+            .collect::<Vec<String>>()
+            .join("\n");
+        let global_exprs = self
+            .globals
+            .iter()
+            .map(|global| format!("auto {} = {};", global.name, global.factory))
+            .collect::<Vec<String>>()
+            .join("\n");
+
         let transpiled_items: Vec<Result<String>> = module
             .body
             .iter()
@@ -23,21 +57,27 @@ impl Transpiler {
             .collect();
         Ok(format!(
             r#"
-		#include "runtime/js_value.hpp"
+                {additional_includes}
+                #include "runtime/js_value.hpp"
 
-		int main() {{
-			{}
-			return 0;
-		}}
-		"#,
-            Result::<Vec<String>>::from_iter(transpiled_items)?.join("\n")
+                int main() {{
+                    {inits}
+                    {global_exprs}
+                    {program}
+                    return 0;
+                }}
+            "#,
+            additional_includes = additional_includes,
+            inits = inits,
+            global_exprs = global_exprs,
+            program = Result::<Vec<String>>::from_iter(transpiled_items)?.join("\n")
         ))
     }
 
     fn transpile_stmt(&mut self, stmt: &Stmt) -> Result<String> {
         match stmt {
             Stmt::Decl(decl) => self.transpile_decl(decl),
-            Stmt::Expr(expr_stmt) => self.transpile_expr(&expr_stmt.expr),
+            Stmt::Expr(expr_stmt) => Ok(format!("{};", self.transpile_expr(&expr_stmt.expr)?)),
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
         }
     }
@@ -92,7 +132,7 @@ impl Transpiler {
         if tpl_expr.quasis.len() > 1 {
             return Err(anyhow!("No support for template string interpolation yet"));
         }
-        Ok(format!(r#""{}""#, tpl_expr.quasis[0].raw))
+        Ok(format!(r#"JSValue{{"{}"}}"#, tpl_expr.quasis[0].raw))
     }
 
     fn transpile_tagged_tpl_expr(&mut self, tagged_tpl_expr: &TaggedTpl) -> Result<String> {
@@ -186,12 +226,6 @@ impl Transpiler {
         ))
     }
 
-    // fn transpile_expr_or_spread(&mut self, expr_or_spread: &ExprOrSpread) -> Result<String> {
-    // 	match expr_or_spread {
-    // 		ExprOrSpread
-    // 	}
-    // }
-
     fn transpile_literal(&mut self, lit: &Lit) -> Result<String> {
         match lit {
             Lit::Num(num) => self.transpile_number(num),
@@ -201,7 +235,14 @@ impl Transpiler {
     }
 
     fn transpile_string(&mut self, string: &Str) -> Result<String> {
-        Ok(format!(r#""{}""#, string.value))
+        Ok(format!(
+            r#"JSValue{{"{}"}}"#,
+            string
+                .raw
+                .as_ref()
+                .map(|v| format!("{}", &v[1..v.len() - 1]))
+                .unwrap_or(format!("{}", string.value))
+        ))
     }
 
     fn transpile_number(&mut self, num: &Number) -> Result<String> {
