@@ -137,8 +137,25 @@ impl Transpiler {
             Expr::TaggedTpl(tagged_tpl_expr) => self.transpile_tagged_tpl_expr(tagged_tpl_expr),
             Expr::Object(object_lit) => self.transpile_object_lit(object_lit),
             Expr::Paren(paren_expr) => self.transpile_paren_expr(paren_expr),
+            Expr::Fn(fn_expr) => self.transpile_fn_expr(fn_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
+    }
+
+    fn transpile_fn_expr(&mut self, fn_expr: &FnExpr) -> Result<String> {
+        let param_destructure = self
+            .transpile_param_destructure(fn_expr.function.params.iter().map(|param| &param.pat))?;
+        let body = match &fn_expr.function.body {
+            Some(block_stmt) => self.transpile_block_stmt(block_stmt)?,
+            _ => return Err(anyhow!("Function lacks a body")),
+        };
+        Ok(format!(
+            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{
+                    {}
+                    {}
+                }})",
+            param_destructure, body
+        ))
     }
 
     fn transpile_paren_expr(&mut self, paren_expr: &ParenExpr) -> Result<String> {

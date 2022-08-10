@@ -126,6 +126,18 @@ mod test {
     }
 
     #[test]
+    fn full_func() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                WASI.write_to_stdout("" + (function () { return "test";})());
+            "#,
+            "full_func",
+        )?;
+        assert!(output.starts_with("test"));
+        Ok(())
+    }
+
+    #[test]
     fn number_coalesc() -> Result<()> {
         let output = compile_and_run(
             r#"
