@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use anyhow::{anyhow, Result};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmt, BlockStmtOrExpr, CallExpr, Decl, Expr,
-    ExprOrSpread, FnExpr, Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, ObjectLit,
-    ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, Stmt, Str, TaggedTpl, Tpl, VarDecl,
-    VarDeclKind, VarDeclarator,
+    ExprOrSpread, FnDecl, FnExpr, Function, Lit, MemberExpr, MemberProp, Module, ModuleItem,
+    Number, ObjectLit, ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, Stmt, Str,
+    TaggedTpl, Tpl, VarDecl, VarDeclKind, VarDeclarator,
 };
 
 pub struct Transpiler {
@@ -96,8 +96,15 @@ impl Transpiler {
     fn transpile_decl(&mut self, decl: &Decl) -> Result<String> {
         match decl {
             Decl::Var(var_decl) => self.transpile_var_decl(var_decl),
+            Decl::Fn(fn_decl) => self.transpile_fn_decl(fn_decl),
             _ => return Err(anyhow!("Unsupported declaration: {:?}", decl)),
         }
+    }
+
+    fn transpile_fn_decl(&mut self, fn_decl: &FnDecl) -> Result<String> {
+        let name = format!("{}", fn_decl.ident.sym);
+        let func = self.transpile_function(&fn_decl.function)?;
+        Ok(format!("JSValue {} = {};", name, func))
     }
 
     fn transpile_var_decl(&mut self, var_decl: &VarDecl) -> Result<String> {
@@ -142,10 +149,10 @@ impl Transpiler {
         }
     }
 
-    fn transpile_fn_expr(&mut self, fn_expr: &FnExpr) -> Result<String> {
-        let param_destructure = self
-            .transpile_param_destructure(fn_expr.function.params.iter().map(|param| &param.pat))?;
-        let body = match &fn_expr.function.body {
+    fn transpile_function(&mut self, function: &Function) -> Result<String> {
+        let param_destructure =
+            self.transpile_param_destructure(function.params.iter().map(|param| &param.pat))?;
+        let body = match &function.body {
             Some(block_stmt) => self.transpile_block_stmt(block_stmt)?,
             _ => return Err(anyhow!("Function lacks a body")),
         };
@@ -156,6 +163,10 @@ impl Transpiler {
                 }})",
             param_destructure, body
         ))
+    }
+
+    fn transpile_fn_expr(&mut self, fn_expr: &FnExpr) -> Result<String> {
+        self.transpile_function(&fn_expr.function)
     }
 
     fn transpile_paren_expr(&mut self, paren_expr: &ParenExpr) -> Result<String> {

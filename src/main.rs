@@ -126,6 +126,22 @@ mod test {
     }
 
     #[test]
+    fn func_decl() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function a() {
+                    return "test";
+                }
+
+                WASI.write_to_stdout("" + a());
+            "#,
+            "full_func",
+        )?;
+        assert!(output.starts_with("test"));
+        Ok(())
+    }
+
+    #[test]
     fn full_func() -> Result<()> {
         let output = compile_and_run(
             r#"
