@@ -64,6 +64,8 @@ fn cpp_to_binary<T: AsRef<str>>(code: T, flags: Vec<&str>) -> Result<()> {
                 .collect::<Vec<&str>>(),
         )
         .spawn()?;
+
+    child.wait()?;
     Ok(())
 }
 
@@ -74,4 +76,29 @@ fn main() -> Result<()> {
     let cpp_code = js_to_cpp(&input)?;
     cpp_to_binary(cpp_code, vec![])?;
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn basic_program() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+            WASI.write_to_stdout("hello");
+        "#,
+        )?;
+        assert_eq!(output, "hello");
+        Ok(())
+    }
+
+    fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
+        let cpp = js_to_cpp(code)?;
+        cpp_to_binary(cpp, vec![])?;
+        let mut child = Command::new("./output").stdout(Stdio::piped()).spawn()?;
+        let output = child.wait_with_output()?;
+        Ok(String::from_utf8(output.stdout)?)
+    }
 }
