@@ -102,6 +102,31 @@ mod test {
     }
 
     #[test]
+    fn variable() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a = "hello";
+                WASI.write_to_stdout(a);
+            "#,
+        )?;
+        assert_eq!(output, "hello");
+        Ok(())
+    }
+
+    #[test]
+    fn variable_assign() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a = "hi";
+                a = "hello";
+                WASI.write_to_stdout(a);
+            "#,
+        )?;
+        assert_eq!(output, "hello");
+        Ok(())
+    }
+
+    #[test]
     fn arrow_func() -> Result<()> {
         let output = compile_and_run(
             r#"

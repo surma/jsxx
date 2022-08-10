@@ -156,11 +156,18 @@ impl Transpiler {
 
     fn transpile_assign_expr(&mut self, assign_expr: &AssignExpr) -> Result<String> {
         self.is_lhs = true;
-        let left = assign_expr
-            .left
-            .as_expr()
-            .ok_or(anyhow!("Unsupported assignment pattern"))?;
-        let left = self.transpile_expr(left)?;
+        let left = match &assign_expr.left {
+            PatOrExpr::Expr(expr) => self.transpile_expr(expr)?,
+            PatOrExpr::Pat(pat) => match pat.as_ref() {
+                Pat::Ident(ident) => format!("{}", ident.sym),
+                _ => {
+                    return Err(anyhow!(
+                        "Unsupported assignment pattern {:?}",
+                        assign_expr.left
+                    ))
+                }
+            },
+        };
         self.is_lhs = false;
         let right = self.transpile_expr(&assign_expr.right)?;
         let op = match assign_expr.op {
