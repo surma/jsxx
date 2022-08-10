@@ -1,18 +1,21 @@
 use std::collections::HashSet;
 
 use anyhow::{anyhow, Result};
-use swc_ecma_ast::{
-    ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmt, BlockStmtOrExpr, CallExpr, Decl, Expr,
-    ExprOrSpread, FnDecl, FnExpr, Function, Lit, MemberExpr, MemberProp, Module, ModuleItem,
-    Number, ObjectLit, ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, Stmt, Str,
-    TaggedTpl, ThisExpr, Tpl, VarDecl, VarDeclKind, VarDeclarator,
-};
+use swc_ecma_ast::*;
 
 pub struct Transpiler {
     pub globals: Vec<crate::globals::Global>,
+    is_lhs: bool,
 }
 
 impl Transpiler {
+    pub fn new() -> Transpiler {
+        Transpiler {
+            globals: vec![],
+            is_lhs: false,
+        }
+    }
+
     pub fn transpile_module(&mut self, module: &Module) -> Result<String> {
         let additional_headers: HashSet<String> = self
             .globals
@@ -49,7 +52,7 @@ impl Transpiler {
             .iter()
             .map(|item| -> Result<String> {
                 match item {
-                    ModuleItem::ModuleDecl(decl) => {
+                    ModuleItem::ModuleDecl(_decl) => {
                         return Err(anyhow!("Module imports/exports are not support"))
                     }
                     ModuleItem::Stmt(stmt) => self.transpile_stmt(stmt),
@@ -146,11 +149,28 @@ impl Transpiler {
             Expr::Paren(paren_expr) => self.transpile_paren_expr(paren_expr),
             Expr::Fn(fn_expr) => self.transpile_fn_expr(fn_expr),
             Expr::This(this_expr) => self.transpile_this_expr(this_expr),
+            Expr::Assign(assign_expr) => self.transpile_assign_expr(assign_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
     }
 
-    fn transpile_this_expr(&mut self, this_expr: &ThisExpr) -> Result<String> {
+    fn transpile_assign_expr(&mut self, assign_expr: &AssignExpr) -> Result<String> {
+        self.is_lhs = true;
+        let left = assign_expr
+            .left
+            .as_expr()
+            .ok_or(anyhow!("Unsupported assignment pattern"))?;
+        let left = self.transpile_expr(left)?;
+        self.is_lhs = false;
+        let right = self.transpile_expr(&assign_expr.right)?;
+        let op = match assign_expr.op {
+            AssignOp::Assign => "=",
+            _ => return Err(anyhow!("Unsupported assign operation {:?}", assign_expr.op)),
+        };
+        Ok(format!("{} {} {}", left, op, right))
+    }
+
+    fn transpile_this_expr(&mut self, _this_expr: &ThisExpr) -> Result<String> {
         Ok(format!("thisArg"))
     }
 
@@ -277,9 +297,9 @@ impl Transpiler {
         };
         Ok(format!(
             "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{
-                    {}
-                    {}
-                }})",
+                {}
+                {}
+            }})",
             param_destructure, body
         ))
     }
@@ -290,7 +310,11 @@ impl Transpiler {
             MemberProp::Ident(ident) => format!("{}", ident.sym),
             _ => return Err(anyhow!("Unsupported member prop {:?}", member_expr.prop)),
         };
-        Ok(format!(r#"{}[JSValue{{"{}"}}]"#, obj, prop))
+        Ok(if self.is_lhs {
+            format!(r#"{}.get_property_slot(JSValue{{"{}"}})"#, obj, prop)
+        } else {
+            format!(r#"{}[JSValue{{"{}"}}]"#, obj, prop)
+        })
     }
 
     fn transpile_call_expr(&mut self, call_expr: &CallExpr) -> Result<String> {

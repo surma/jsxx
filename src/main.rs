@@ -28,9 +28,9 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
         .parse_module()
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
 
-    let mut transpiler = transpiler::Transpiler {
-        globals: vec![globals::wasi::WASIGlobal(), globals::json::JSONGlobal()],
-    };
+    let mut transpiler = transpiler::Transpiler::new();
+    transpiler.globals.push(globals::wasi::WASIGlobal());
+    transpiler.globals.push(globals::json::JSONGlobal());
     transpiler.transpile_module(&module)
 }
 
@@ -230,6 +230,19 @@ mod test {
             "#,
         )?;
         assert_eq!(output, "flag");
+        Ok(())
+    }
+
+    #[test]
+    fn object_assign() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {marker: "flag"};
+                v.marker = "hi";
+                WASI.write_to_stdout(v.marker);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
         Ok(())
     }
 
