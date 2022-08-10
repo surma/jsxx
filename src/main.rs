@@ -153,6 +153,19 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn object_lit() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {a: "v"};
+                WASI.write_to_stdout(v.a);
+            "#,
+            "object_lit",
+        )?;
+        assert_eq!(output, "v");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>, S: AsRef<str>>(code: T, name: S) -> Result<String> {
         let cpp = js_to_cpp(code)?;
         cpp_to_binary(cpp, name.as_ref(), vec![])?;

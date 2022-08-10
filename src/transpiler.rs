@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use anyhow::{anyhow, Result};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmtOrExpr, CallExpr, Decl, Expr, ExprOrSpread,
-    Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, Pat, Stmt, Str, TaggedTpl, Tpl,
-    VarDecl, VarDeclKind, VarDeclarator,
+    Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, ObjectLit, Pat, Prop, PropName,
+    PropOrSpread, Stmt, Str, TaggedTpl, Tpl, VarDecl, VarDeclKind, VarDeclarator,
 };
 
 pub struct Transpiler {
@@ -124,7 +124,43 @@ impl Transpiler {
             Expr::Bin(bin_expr) => self.transpile_bin_expr(bin_expr),
             Expr::Tpl(tpl_expr) => self.transpile_tpl_expr(tpl_expr),
             Expr::TaggedTpl(tagged_tpl_expr) => self.transpile_tagged_tpl_expr(tagged_tpl_expr),
+            Expr::Object(object_lit) => self.transpile_object_lit(object_lit),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
+        }
+    }
+
+    fn transpile_object_lit(&mut self, object_lit: &ObjectLit) -> Result<String> {
+        let transpiled_props: Vec<Result<String>> = object_lit
+            .props
+            .iter()
+            .map(|prop| match prop {
+                PropOrSpread::Spread(_) => return Err(anyhow!("Object spread unsupported")),
+                PropOrSpread::Prop(prop) => match prop.as_ref() {
+                    Prop::KeyValue(key_value) => Ok(format!(
+                        "{{{}, {}}}",
+                        self.transpile_prop_name(&key_value.key)?,
+                        self.transpile_expr(&key_value.value)?
+                    )),
+                    _ => Err(anyhow!("Unsupported object property {:?}", prop)),
+                },
+            })
+            .collect();
+        let prop_defs = Result::<Vec<String>>::from_iter(transpiled_props)?.join(",\n");
+        Ok(format!("JSValue::new_object({{ {} }})", prop_defs))
+    }
+
+    fn transpile_prop_name(&mut self, prop_name: &PropName) -> Result<String> {
+        match prop_name {
+            PropName::Ident(ident) => Ok(format!(r#""{}""#, ident.sym)),
+            PropName::Str(str) => {
+                let v = str
+                    .raw
+                    .as_ref()
+                    .map(|v| format!("{}", v))
+                    .unwrap_or(format!("{}", str.value));
+                Ok(format!(r#""{}""#, v))
+            }
+            _ => Err(anyhow!("Unsupported property name {:?}", prop_name)),
         }
     }
 
