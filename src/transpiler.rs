@@ -3,8 +3,8 @@ use std::collections::HashSet;
 use anyhow::{anyhow, Result};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmtOrExpr, CallExpr, Decl, Expr, ExprOrSpread,
-    Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, ObjectLit, Pat, Prop, PropName,
-    PropOrSpread, Stmt, Str, TaggedTpl, Tpl, VarDecl, VarDeclKind, VarDeclarator,
+    FnExpr, Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, ObjectLit, ParenExpr, Pat,
+    Prop, PropName, PropOrSpread, Stmt, Str, TaggedTpl, Tpl, VarDecl, VarDeclKind, VarDeclarator,
 };
 
 pub struct Transpiler {
@@ -125,8 +125,13 @@ impl Transpiler {
             Expr::Tpl(tpl_expr) => self.transpile_tpl_expr(tpl_expr),
             Expr::TaggedTpl(tagged_tpl_expr) => self.transpile_tagged_tpl_expr(tagged_tpl_expr),
             Expr::Object(object_lit) => self.transpile_object_lit(object_lit),
+            Expr::Paren(paren_expr) => self.transpile_paren_expr(paren_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
+    }
+
+    fn transpile_paren_expr(&mut self, paren_expr: &ParenExpr) -> Result<String> {
+        Ok(format!("({})", self.transpile_expr(&paren_expr.expr)?))
     }
 
     fn transpile_object_lit(&mut self, object_lit: &ObjectLit) -> Result<String> {
@@ -191,10 +196,11 @@ impl Transpiler {
         Ok(format!("{}{}{}", left, op, right))
     }
 
-    fn transpile_arrow_expr(&mut self, arrow_expr: &ArrowExpr) -> Result<String> {
-        let transpiled_params: Vec<Result<String>> = arrow_expr
-            .params
-            .iter()
+    fn transpile_param_destructure<'a>(
+        &mut self,
+        params: impl Iterator<Item = &'a Pat>,
+    ) -> Result<String> {
+        let transpiled_params: Vec<Result<String>> = params
             .enumerate()
             .map(|(idx, param)| {
                 param
@@ -205,7 +211,11 @@ impl Transpiler {
                     ))
             })
             .collect();
-        let param_destructure = Result::<Vec<String>>::from_iter(transpiled_params)?.join(";");
+        Ok(Result::<Vec<String>>::from_iter(transpiled_params)?.join(";"))
+    }
+
+    fn transpile_arrow_expr(&mut self, arrow_expr: &ArrowExpr) -> Result<String> {
+        let param_destructure = self.transpile_param_destructure(arrow_expr.params.iter())?;
         let body = match &arrow_expr.body {
             BlockStmtOrExpr::Expr(expr) => format!("return {};", self.transpile_expr(expr)?),
             _ => return Err(anyhow!("Unsupported body {:?}", arrow_expr.body)),

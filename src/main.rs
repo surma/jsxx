@@ -102,6 +102,18 @@ mod test {
     }
 
     #[test]
+    fn arrow_func() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                WASI.write_to_stdout("" + (() => "test")());
+            "#,
+            "arrow_func",
+        )?;
+        assert!(output.starts_with("test"));
+        Ok(())
+    }
+
+    #[test]
     fn number_coalesc() -> Result<()> {
         let output = compile_and_run(
             r#"
@@ -165,6 +177,32 @@ mod test {
         assert_eq!(output, "v");
         Ok(())
     }
+
+    #[test]
+    fn object_func() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {a: () => "hi"};
+                WASI.write_to_stdout(v.a());
+            "#,
+            "object_func",
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    // #[test]
+    // fn object_func_this() -> Result<()> {
+    //     let output = compile_and_run(
+    //         r#"
+    //             let v = {marker: "flag", a: function() { return this; }};
+    //             WASI.write_to_stdout(v.a());
+    //         "#,
+    //         "object_func",
+    //     )?;
+    //     assert_eq!(output, "hi");
+    //     Ok(())
+    // }
 
     fn compile_and_run<T: AsRef<str>, S: AsRef<str>>(code: T, name: S) -> Result<String> {
         let cpp = js_to_cpp(code)?;
