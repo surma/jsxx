@@ -5,7 +5,7 @@ use swc_ecma_ast::{
     ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmt, BlockStmtOrExpr, CallExpr, Decl, Expr,
     ExprOrSpread, FnDecl, FnExpr, Function, Lit, MemberExpr, MemberProp, Module, ModuleItem,
     Number, ObjectLit, ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, Stmt, Str,
-    TaggedTpl, Tpl, VarDecl, VarDeclKind, VarDeclarator,
+    TaggedTpl, ThisExpr, Tpl, VarDecl, VarDeclKind, VarDeclarator,
 };
 
 pub struct Transpiler {
@@ -145,8 +145,13 @@ impl Transpiler {
             Expr::Object(object_lit) => self.transpile_object_lit(object_lit),
             Expr::Paren(paren_expr) => self.transpile_paren_expr(paren_expr),
             Expr::Fn(fn_expr) => self.transpile_fn_expr(fn_expr),
+            Expr::This(this_expr) => self.transpile_this_expr(this_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
+    }
+
+    fn transpile_this_expr(&mut self, this_expr: &ThisExpr) -> Result<String> {
+        Ok(format!("thisArg"))
     }
 
     fn transpile_function(&mut self, function: &Function) -> Result<String> {

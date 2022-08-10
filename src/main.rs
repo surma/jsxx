@@ -221,18 +221,17 @@ mod test {
         Ok(())
     }
 
-    // #[test]
-    // fn object_func_this() -> Result<()> {
-    //     let output = compile_and_run(
-    //         r#"
-    //             let v = {marker: "flag", a: function() { return this; }};
-    //             WASI.write_to_stdout(v.a());
-    //         "#,
-    //         "object_func",
-    //     )?;
-    //     assert_eq!(output, "hi");
-    //     Ok(())
-    // }
+    #[test]
+    fn object_func_this() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {marker: "flag", a: function() { return this.marker; }};
+                WASI.write_to_stdout(v.a());
+            "#,
+        )?;
+        assert_eq!(output, "flag");
+        Ok(())
+    }
 
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
