@@ -13,3 +13,4 @@ swc_ecma_ast = "0.90.0"
 
 [dev-dependencies]
 anyhow = "1.0.43"
+uuid = { version = "1.1.2", features = ["v4"] }

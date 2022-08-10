@@ -88,6 +88,7 @@ fn main() -> Result<()> {
 mod test {
     use super::*;
     use anyhow::Result;
+    use uuid::Uuid;
 
     #[test]
     fn basic_program() -> Result<()> {
@@ -95,7 +96,6 @@ mod test {
             r#"
                 WASI.write_to_stdout("hello");
             "#,
-            "basic_program",
         )?;
         assert_eq!(output, "hello");
         Ok(())
@@ -107,7 +107,6 @@ mod test {
             r#"
                 WASI.write_to_stdout("" + (() => "test")());
             "#,
-            "arrow_func",
         )?;
         assert!(output.starts_with("test"));
         Ok(())
@@ -119,7 +118,6 @@ mod test {
             r#"
                 WASI.write_to_stdout("" + (() => { 1 + 1; return "test";})());
             "#,
-            "arrow_func_with_body",
         )?;
         assert!(output.starts_with("test"));
         Ok(())
@@ -135,7 +133,6 @@ mod test {
 
                 WASI.write_to_stdout("" + a());
             "#,
-            "full_func",
         )?;
         assert!(output.starts_with("test"));
         Ok(())
@@ -147,7 +144,6 @@ mod test {
             r#"
                 WASI.write_to_stdout("" + (function () { return "test";})());
             "#,
-            "full_func",
         )?;
         assert!(output.starts_with("test"));
         Ok(())
@@ -159,7 +155,6 @@ mod test {
             r#"
                 WASI.write_to_stdout("" + 123);
             "#,
-            "number_coalesc",
         )?;
         assert!(output.starts_with("123."));
         Ok(())
@@ -172,7 +167,6 @@ mod test {
                 let v = ["a", "b", "c"]
                 WASI.write_to_stdout(v.join(","));
             "#,
-            "array_literals",
         )?;
         assert_eq!(output, "a,b,c");
         Ok(())
@@ -186,7 +180,6 @@ mod test {
                 v.push("c");
                 WASI.write_to_stdout(v.join(","));
             "#,
-            "array_push",
         )?;
         assert_eq!(output, "a,b,c");
         Ok(())
@@ -199,7 +192,6 @@ mod test {
                 let v = ["a", "b", "c"];
                 WASI.write_to_stdout(v.map(v => v + "!").join(","));
             "#,
-            "array_map",
         )?;
         assert_eq!(output, "a!,b!,c!");
         Ok(())
@@ -212,7 +204,6 @@ mod test {
                 let v = {a: "v"};
                 WASI.write_to_stdout(v.a);
             "#,
-            "object_lit",
         )?;
         assert_eq!(output, "v");
         Ok(())
@@ -225,7 +216,6 @@ mod test {
                 let v = {a: () => "hi"};
                 WASI.write_to_stdout(v.a());
             "#,
-            "object_func",
         )?;
         assert_eq!(output, "hi");
         Ok(())
@@ -244,14 +234,15 @@ mod test {
     //     Ok(())
     // }
 
-    fn compile_and_run<T: AsRef<str>, S: AsRef<str>>(code: T, name: S) -> Result<String> {
+    fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
+        let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
-        cpp_to_binary(cpp, name.as_ref(), vec![])?;
-        let mut child = Command::new(format!("./{}", name.as_ref()))
+        cpp_to_binary(cpp, &name, vec![])?;
+        let mut child = Command::new(format!("./{}", &name))
             .stdout(Stdio::piped())
             .spawn()?;
         let output = child.wait_with_output()?;
-        std::fs::remove_file(name.as_ref())?;
+        std::fs::remove_file(&name)?;
         Ok(String::from_utf8(output.stdout)?)
     }
 }
