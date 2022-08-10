@@ -15,7 +15,6 @@ class JSValue;
 class JSValueBinding {
 public:
   JSValueBinding();
-  // JSValueBinding(JSValue val);
 
   static JSValueBinding with_value(JSValue val);
 
@@ -24,5 +23,4 @@ public:
   JSValue &get();
 
   shared_ptr<JSValue> internal;
-  optional<shared_ptr<JSValue>> parent_value = std::nullopt;
 };

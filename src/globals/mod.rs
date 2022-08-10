@@ -1,5 +1,5 @@
-pub mod wasi;
 pub mod json;
+pub mod wasi;
 
 pub struct Global {
     pub name: String,

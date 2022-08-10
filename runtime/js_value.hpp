@@ -2,12 +2,14 @@
 
 #include <memory>
 #include <variant>
+#include <optional>
 
 #include "js_primitives.hpp"
 #include "js_value_binding.hpp"
 
 using std::shared_ptr;
 using std::unique_ptr;
+using std::optional;
 
 class JSUndefined;
 class JSBool;
@@ -80,4 +82,5 @@ public:
   bool is_undefined() const;
 
   unique_ptr<Box> internal;
+  optional<shared_ptr<JSValue>> parent_value;
 };

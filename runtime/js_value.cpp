@@ -5,44 +5,44 @@ JSValue::JSValue()
     : internal{new Box{std::in_place_index<JSValueType::UNDEFINED>,
                        JSUndefined{}}} {};
 
-JSValue::JSValue(const JSValue &v) : internal{new Box{*v.internal}} {};
+JSValue::JSValue(const JSValue &v) : internal{new Box{*v.internal}}, parent_value{v.parent_value} {};
 
 JSValue::JSValue(bool v)
-    : internal{new Box{std::in_place_index<JSValueType::BOOL>, JSBool{v}}} {};
+    : internal{new Box{std::in_place_index<JSValueType::BOOL>, JSBool{v}}}, parent_value{} {};
 
 JSValue::JSValue(JSBool v)
-    : internal{new Box{std::in_place_index<JSValueType::BOOL>, v}} {};
+    : internal{new Box{std::in_place_index<JSValueType::BOOL>, v}}, parent_value{} {};
 
 JSValue::JSValue(double v)
     : internal{
-          new Box{std::in_place_index<JSValueType::NUMBER>, JSNumber{v}}} {};
+          new Box{std::in_place_index<JSValueType::NUMBER>, JSNumber{v}}}, parent_value{} {};
 
 JSValue::JSValue(JSNumber v)
-    : internal{new Box{std::in_place_index<JSValueType::NUMBER>, v}} {};
+    : internal{new Box{std::in_place_index<JSValueType::NUMBER>, v}}, parent_value{} {};
 
 JSValue::JSValue(const char *v)
     : internal{
-          new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}} {};
+          new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}}, parent_value{} {};
 
 JSValue::JSValue(std::string v)
     : internal{
-          new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}} {};
+          new Box{std::in_place_index<JSValueType::STRING>, JSString{v}}}, parent_value{} {};
 
 JSValue::JSValue(JSString v)
-    : internal{new Box{std::in_place_index<JSValueType::STRING>, v}} {};
+    : internal{new Box{std::in_place_index<JSValueType::STRING>, v}}, parent_value{} {};
 
 JSValue::JSValue(JSFunction v)
-    : internal{new Box{std::in_place_index<JSValueType::FUNCTION>, v}} {};
+    : internal{new Box{std::in_place_index<JSValueType::FUNCTION>, v}}, parent_value{} {};
 
 JSValue::JSValue(JSObject v)
     : internal{new Box{std::in_place_index<JSValueType::OBJECT>,
-                       shared_ptr<JSObject>{new JSObject{v}}}} {};
+                       shared_ptr<JSObject>{new JSObject{v}}}}, parent_value{} {};
 
 JSValue::JSValue(JSArray v)
     : internal{new Box{std::in_place_index<JSValueType::ARRAY>,
-                       shared_ptr<JSArray>{new JSArray{v}}}} {};
+                       shared_ptr<JSArray>{new JSArray{v}}}}, parent_value{} {};
 
-JSValue::JSValue(JSValueBinding v) : internal{new Box{*v.get().internal}} {};
+JSValue::JSValue(JSValueBinding v) : internal{new Box{*v.get().internal}}, parent_value{} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
 JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
@@ -111,7 +111,8 @@ JSValue JSValue::operator[](const size_t index) {
 }
 
 JSValue JSValue::operator()(std::vector<JSValue> args) {
-  return this->apply(JSValue::undefined(), args);
+  auto this_arg_ptr = this->parent_value.value_or(shared_ptr<JSValue>{new JSValue{JSValue::undefined()}});
+  return this->apply(*this_arg_ptr, args);
 }
 
 JSValue JSValue::get_property(const JSValue key) {
@@ -119,24 +120,35 @@ JSValue JSValue::get_property(const JSValue key) {
 }
 
 JSValueBinding JSValue::get_property_slot(const JSValue key) {
+  JSValueBinding v;
   switch (this->type()) {
   case JSValueType::UNDEFINED:
-    return JSValueBinding::with_value(JSValue::undefined());
+    v = JSValueBinding::with_value(JSValue::undefined());
+    break;
   case JSValueType::BOOL:
-    return std::get<JSValueType::BOOL>(*this->internal).get_property_slot(key);
+    v = std::get<JSValueType::BOOL>(*this->internal).get_property_slot(key);
+    break;
   case JSValueType::NUMBER:
-    return std::get<JSValueType::NUMBER>(*this->internal).get_property_slot(key);
+    v = std::get<JSValueType::NUMBER>(*this->internal).get_property_slot(key);
+    break;
   case JSValueType::STRING:
-    return std::get<JSValueType::STRING>(*this->internal).get_property_slot(key);
+    v = std::get<JSValueType::STRING>(*this->internal).get_property_slot(key);
+    break;
   case JSValueType::ARRAY:
-    return std::get<JSValueType::ARRAY>(*this->internal)->get_property_slot(key);
+    v = std::get<JSValueType::ARRAY>(*this->internal)->get_property_slot(key);
+    break;
   case JSValueType::OBJECT:
-    return std::get<JSValueType::OBJECT>(*this->internal)->get_property_slot(key);
+    v = std::get<JSValueType::OBJECT>(*this->internal)->get_property_slot(key);
+    break;
   case JSValueType::FUNCTION:
-    return std::get<JSValueType::FUNCTION>(*this->internal).get_property_slot(key);
+    v = std::get<JSValueType::FUNCTION>(*this->internal).get_property_slot(key);
+    break;
   case JSValueType::EXCEPTION:
-    return std::get<JSValueType::EXCEPTION>(*this->internal)->get_property_slot(key);
-  }
+    v = std::get<JSValueType::EXCEPTION>(*this->internal)->get_property_slot(key);
+    break;
+  };
+  v.get().parent_value = std::optional{shared_ptr<JSValue>{new JSValue{*this}}};
+  return v;
 }
 
 JSValueType JSValue::type() const {
