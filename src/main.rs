@@ -114,6 +114,18 @@ mod test {
     }
 
     #[test]
+    fn arrow_func_with_body() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                WASI.write_to_stdout("" + (() => { 1 + 1; return "test";})());
+            "#,
+            "arrow_func_with_body",
+        )?;
+        assert!(output.starts_with("test"));
+        Ok(())
+    }
+
+    #[test]
     fn number_coalesc() -> Result<()> {
         let output = compile_and_run(
             r#"

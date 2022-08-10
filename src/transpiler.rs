@@ -2,9 +2,10 @@ use std::collections::HashSet;
 
 use anyhow::{anyhow, Result};
 use swc_ecma_ast::{
-    ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmtOrExpr, CallExpr, Decl, Expr, ExprOrSpread,
-    FnExpr, Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, ObjectLit, ParenExpr, Pat,
-    Prop, PropName, PropOrSpread, Stmt, Str, TaggedTpl, Tpl, VarDecl, VarDeclKind, VarDeclarator,
+    ArrayLit, ArrowExpr, BinExpr, BinaryOp, BlockStmt, BlockStmtOrExpr, CallExpr, Decl, Expr,
+    ExprOrSpread, FnExpr, Lit, MemberExpr, MemberProp, Module, ModuleItem, Number, ObjectLit,
+    ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, Stmt, Str, TaggedTpl, Tpl, VarDecl,
+    VarDeclKind, VarDeclarator,
 };
 
 pub struct Transpiler {
@@ -78,8 +79,18 @@ impl Transpiler {
         match stmt {
             Stmt::Decl(decl) => self.transpile_decl(decl),
             Stmt::Expr(expr_stmt) => Ok(format!("{};", self.transpile_expr(&expr_stmt.expr)?)),
+            Stmt::Block(block_stmt) => self.transpile_block_stmt(block_stmt),
+            Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt),
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
         }
+    }
+
+    fn transpile_return_stmt(&mut self, return_stmt: &ReturnStmt) -> Result<String> {
+        let arg = match &return_stmt.arg {
+            None => "".to_string(),
+            Some(expr) => self.transpile_expr(expr)?,
+        };
+        Ok(format!("return {};", arg))
     }
 
     fn transpile_decl(&mut self, decl: &Decl) -> Result<String> {
@@ -214,10 +225,21 @@ impl Transpiler {
         Ok(Result::<Vec<String>>::from_iter(transpiled_params)?.join(";"))
     }
 
+    fn transpile_block_stmt(&mut self, block_stmt: &BlockStmt) -> Result<String> {
+        let stmts: Vec<Result<String>> = block_stmt
+            .stmts
+            .iter()
+            .map(|stmt| self.transpile_stmt(stmt))
+            .collect();
+        let block: String = Result::<Vec<String>>::from_iter(stmts)?.join(";\n");
+        Ok(format!("{{ {} }}", block))
+    }
+
     fn transpile_arrow_expr(&mut self, arrow_expr: &ArrowExpr) -> Result<String> {
         let param_destructure = self.transpile_param_destructure(arrow_expr.params.iter())?;
         let body = match &arrow_expr.body {
             BlockStmtOrExpr::Expr(expr) => format!("return {};", self.transpile_expr(expr)?),
+            BlockStmtOrExpr::BlockStmt(block_stmt) => self.transpile_block_stmt(block_stmt)?,
             _ => return Err(anyhow!("Unsupported body {:?}", arrow_expr.body)),
         };
         Ok(format!(
