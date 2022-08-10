@@ -159,6 +159,7 @@ impl Transpiler {
         let left = match &assign_expr.left {
             PatOrExpr::Expr(expr) => self.transpile_expr(expr)?,
             PatOrExpr::Pat(pat) => match pat.as_ref() {
+                Pat::Expr(expr) => self.transpile_expr(expr)?,
                 Pat::Ident(ident) => format!("{}", ident.sym),
                 _ => {
                     return Err(anyhow!(
@@ -227,7 +228,7 @@ impl Transpiler {
 
     fn transpile_prop_name(&mut self, prop_name: &PropName) -> Result<String> {
         match prop_name {
-            PropName::Ident(ident) => Ok(format!(r#""{}""#, ident.sym)),
+            PropName::Ident(ident) => Ok(format!(r#"JSValue{{"{}"}}"#, ident.sym)),
             PropName::Str(str) => {
                 let v = str
                     .raw
@@ -314,16 +315,16 @@ impl Transpiler {
     fn transpile_member_expr(&mut self, member_expr: &MemberExpr) -> Result<String> {
         let obj = self.transpile_expr(&member_expr.obj)?;
         let prop = match &member_expr.prop {
-            MemberProp::Ident(ident) => format!("{}", ident.sym),
+            MemberProp::Ident(ident) => format!(r#"JSValue{{"{}"}}"#, ident.sym),
             MemberProp::Computed(computed_prop_name) => {
                 self.transpile_expr(&computed_prop_name.expr)?
             }
             _ => return Err(anyhow!("Unsupported member prop {:?}", member_expr.prop)),
         };
         Ok(if self.is_lhs {
-            format!(r#"{}.get_property_slot(JSValue{{"{}"}})"#, obj, prop)
+            format!(r#"{}.get_property_slot({})"#, obj, prop)
         } else {
-            format!(r#"{}[JSValue{{"{}"}}]"#, obj, prop)
+            format!(r#"{}[{}]"#, obj, prop)
         })
     }
 

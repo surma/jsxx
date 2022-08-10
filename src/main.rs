@@ -216,7 +216,7 @@ mod test {
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn array_access() -> Result<()> {
         let output = compile_and_run(
             r#"
