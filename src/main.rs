@@ -5,11 +5,21 @@ use std::{
 };
 
 use anyhow::{anyhow, Result};
+use clap::Parser;
 use swc_common::BytePos;
-use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser, StringInput, Syntax};
+use swc_ecma_parser::{lexer::Lexer, EsConfig, Parser as ESParser, StringInput, Syntax};
 
+mod command_utils;
 mod globals;
 mod transpiler;
+
+#[derive(Parser)]
+#[clap(author, version, about)]
+struct Args {
+    /// Emit cpp code to stdout rather than compiling it.
+    #[clap(long = "emit-cpp", default_value_t = false, value_parser)]
+    emit_cpp: bool,
+}
 
 fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
     let syntax = Syntax::Es(EsConfig::default());
@@ -23,7 +33,7 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
         ),
         None,
     );
-    let mut parser = Parser::new_from(lexer);
+    let mut parser = ESParser::new_from(lexer);
     let module = parser
         .parse_module()
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
@@ -76,11 +86,20 @@ fn cpp_to_binary<T: AsRef<str>, S: AsRef<str>>(
 }
 
 fn main() -> Result<()> {
+    let args = Args::parse();
+
     let mut input: String = String::new();
     std::io::stdin().read_to_string(&mut input)?;
 
     let cpp_code = js_to_cpp(&input)?;
-    cpp_to_binary(cpp_code, "output", vec![])?;
+
+    if args.emit_cpp {
+        let (status, stdout, stderr) =
+            command_utils::pipe_through_shell::<String>("clang-format", &[], cpp_code.as_bytes())?;
+        println!("{}", String::from_utf8(stdout)?);
+    } else {
+        cpp_to_binary(cpp_code, "output", vec![])?;
+    }
     Ok(())
 }
 
@@ -194,6 +213,18 @@ mod test {
             "#,
         )?;
         assert_eq!(output, "a,b,c");
+        Ok(())
+    }
+
+    // #[test]
+    fn array_access() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b"];
+                WASI.write_to_stdout(v[0] + v[1]);
+            "#,
+        )?;
+        assert_eq!(output, "ab");
         Ok(())
     }
 

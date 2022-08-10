@@ -10,6 +10,7 @@ swc_common = "0.27.0"
 thiserror = "1.0.32"
 anyhow = "1.0.43"
 swc_ecma_ast = "0.90.0"
+clap = { version = "3.2.16", features = ["derive"] }
 
 [dev-dependencies]
 anyhow = "1.0.43"

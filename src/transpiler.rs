@@ -315,6 +315,9 @@ impl Transpiler {
         let obj = self.transpile_expr(&member_expr.obj)?;
         let prop = match &member_expr.prop {
             MemberProp::Ident(ident) => format!("{}", ident.sym),
+            MemberProp::Computed(computed_prop_name) => {
+                self.transpile_expr(&computed_prop_name.expr)?
+            }
             _ => return Err(anyhow!("Unsupported member prop {:?}", member_expr.prop)),
         };
         Ok(if self.is_lhs {
