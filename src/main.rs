@@ -34,8 +34,13 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
     transpiler.transpile_module(&module)
 }
 
-fn cpp_to_binary<T: AsRef<str>>(code: T, flags: Vec<&str>) -> Result<()> {
-    let mut tempfile = File::create("./generated.cpp")?;
+fn cpp_to_binary<T: AsRef<str>, S: AsRef<str>>(
+    code: T,
+    outputname: S,
+    flags: Vec<&str>,
+) -> Result<()> {
+    let cpp_file_name = format!("./{}.cpp", outputname.as_ref());
+    let mut tempfile = File::create(&cpp_file_name)?;
     tempfile.write_all(code.as_ref().as_bytes())?;
     tempfile.flush();
     drop(tempfile);
@@ -51,8 +56,8 @@ fn cpp_to_binary<T: AsRef<str>>(code: T, flags: Vec<&str>) -> Result<()> {
                     [
                         "--std=c++17",
                         "-o",
-                        "output",
-                        "generated.cpp",
+                        outputname.as_ref(),
+                        cpp_file_name.as_ref(),
                         "runtime/global_json.cpp",
                         "runtime/global_wasi.cpp",
                         "runtime/js_primitives.cpp",
@@ -66,6 +71,7 @@ fn cpp_to_binary<T: AsRef<str>>(code: T, flags: Vec<&str>) -> Result<()> {
         .spawn()?;
 
     child.wait()?;
+    std::fs::remove_file(cpp_file_name)?;
     Ok(())
 }
 
@@ -74,7 +80,7 @@ fn main() -> Result<()> {
     std::io::stdin().read_to_string(&mut input)?;
 
     let cpp_code = js_to_cpp(&input)?;
-    cpp_to_binary(cpp_code, vec![])?;
+    cpp_to_binary(cpp_code, "output", vec![])?;
     Ok(())
 }
 
@@ -87,17 +93,32 @@ mod test {
     fn basic_program() -> Result<()> {
         let output = compile_and_run(
             r#"
-            WASI.write_to_stdout("hello");
-        "#,
+                WASI.write_to_stdout("hello");
+            "#,
+            "basic_program",
         )?;
         assert_eq!(output, "hello");
         Ok(())
     }
 
-    fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
+    #[test]
+    fn number_coalesc() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                WASI.write_to_stdout("" + 123);
+            "#,
+            "number_coalesc",
+        )?;
+        assert!(output.starts_with("123."));
+        Ok(())
+    }
+
+    fn compile_and_run<T: AsRef<str>, S: AsRef<str>>(code: T, name: S) -> Result<String> {
         let cpp = js_to_cpp(code)?;
-        cpp_to_binary(cpp, vec![])?;
-        let mut child = Command::new("./output").stdout(Stdio::piped()).spawn()?;
+        cpp_to_binary(cpp, name.as_ref(), vec![])?;
+        let mut child = Command::new(format!("./{}", name.as_ref()))
+            .stdout(Stdio::piped())
+            .spawn()?;
         let output = child.wait_with_output()?;
         Ok(String::from_utf8(output.stdout)?)
     }
