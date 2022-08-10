@@ -6,7 +6,11 @@ JSValue JSUndefined::operator==(JSValue &other) {
   return JSValue{other.is_undefined()};
 }
 
-JSValueBinding JSBase::get_property(JSValue key) {
+JSValue JSBase::get_property(JSValue key) {
+  return this->get_property_slot(key).get();
+}
+
+JSValueBinding JSBase::get_property_slot(JSValue key) {
   auto obj =
       std::find_if(this->properties.begin(), this->properties.end(),
                    [&](std::pair<JSValue, JSValueBinding> &item) -> bool {
@@ -89,11 +93,13 @@ JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {
   return JSValue{result};
 }
 
-JSValueBinding JSArray::operator[](const JSValue idx) {
-  if (idx.type() != JSValueType::NUMBER) {
-    return this->get_property(idx);
+JSValueBinding JSArray::get_property_slot(const JSValue key) {
+  if (key.type() == JSValueType::NUMBER) {
+    auto idx = static_cast<size_t>(key.coerce_to_double());
+    if(idx >= this->internal.size()) return JSValueBinding::with_value(JSValue::undefined());
+    return this->internal[idx];
   }
-  return this->internal[static_cast<size_t>(idx.coerce_to_double())];
+  return JSBase::get_property_slot(key);
 }
 
 JSObject::JSObject() : JSBase(), internal{} {};
@@ -103,13 +109,13 @@ JSObject::JSObject(std::vector<std::pair<JSValue, JSValue>> data) : JSObject() {
   }
 };
 
-JSValueBinding JSObject::operator[](const JSValue idx) {
+JSValueBinding JSObject::get_property_slot(const JSValue key) {
   auto obj = std::find_if(this->internal.begin(), this->internal.end(),
                           [=](std::pair<JSValue, JSValueBinding> &item) {
-                            return (item.first == idx).coerce_to_bool();
+                            return (item.first == key).coerce_to_bool();
                           });
   if (obj == this->internal.end()) {
-    return this->get_property(idx);
+    return JSBase::get_property_slot(key);
   }
   return (*obj).second;
 }

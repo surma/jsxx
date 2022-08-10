@@ -20,10 +20,6 @@ public:
   static JSValueBinding with_value(JSValue val);
 
   void operator=(JSValue other);
-  JSValue operator()(std::vector<JSValue> args);
-  JSValueBinding operator[](const JSValue index);
-  JSValue operator+(JSValue other);
-  JSValue operator+(JSValueBinding other);
 
   JSValue &get();
 

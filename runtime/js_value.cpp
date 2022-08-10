@@ -98,26 +98,15 @@ JSValue JSValue::operator*(JSValue other) {
   return new JSValue{"Multiplication not implemented for this type yet"};
 }
 
-JSValueBinding JSValue::operator[](const JSValue index) {
-  JSValueBinding vb;
-  if (this->type() == JSValueType::OBJECT) {
-    shared_ptr<JSObject> obj = std::get<JSValueType::OBJECT>(*this->internal);
-    vb = (*obj)[index];
-  } else if (this->type() == JSValueType::ARRAY) {
-    shared_ptr<JSArray> obj = std::get<JSValueType::ARRAY>(*this->internal);
-    vb = (*obj)[index];
-  } else {
-    vb = this->get_property(index);
-  }
-  vb.parent_value = {shared_ptr<JSValue>{new JSValue{*this}}};
-  return vb;
+JSValue JSValue::operator[](const JSValue key) {
+  return this->get_property(key);
 }
 
-JSValueBinding JSValue::operator[](const char *index) {
+JSValue JSValue::operator[](const char *index) {
   return (*this)[JSValue{index}];
 }
 
-JSValueBinding JSValue::operator[](const size_t index) {
+JSValue JSValue::operator[](const size_t index) {
   return (*this)[JSValue{static_cast<double>(index)}];
 }
 
@@ -125,24 +114,28 @@ JSValue JSValue::operator()(std::vector<JSValue> args) {
   return this->apply(JSValue::undefined(), args);
 }
 
-JSValueBinding JSValue::get_property(const JSValue key) {
+JSValue JSValue::get_property(const JSValue key) {
+  return this->get_property_slot(key).get();
+}
+
+JSValueBinding JSValue::get_property_slot(const JSValue key) {
   switch (this->type()) {
   case JSValueType::UNDEFINED:
     return JSValueBinding::with_value(JSValue::undefined());
   case JSValueType::BOOL:
-    return std::get<JSValueType::BOOL>(*this->internal).get_property(key);
+    return std::get<JSValueType::BOOL>(*this->internal).get_property_slot(key);
   case JSValueType::NUMBER:
-    return std::get<JSValueType::NUMBER>(*this->internal).get_property(key);
+    return std::get<JSValueType::NUMBER>(*this->internal).get_property_slot(key);
   case JSValueType::STRING:
-    return std::get<JSValueType::STRING>(*this->internal).get_property(key);
+    return std::get<JSValueType::STRING>(*this->internal).get_property_slot(key);
   case JSValueType::ARRAY:
-    return std::get<JSValueType::ARRAY>(*this->internal)->get_property(key);
+    return std::get<JSValueType::ARRAY>(*this->internal)->get_property_slot(key);
   case JSValueType::OBJECT:
-    return std::get<JSValueType::OBJECT>(*this->internal)->get_property(key);
+    return std::get<JSValueType::OBJECT>(*this->internal)->get_property_slot(key);
   case JSValueType::FUNCTION:
-    return std::get<JSValueType::FUNCTION>(*this->internal).get_property(key);
+    return std::get<JSValueType::FUNCTION>(*this->internal).get_property_slot(key);
   case JSValueType::EXCEPTION:
-    return std::get<JSValueType::EXCEPTION>(*this->internal)->get_property(key);
+    return std::get<JSValueType::EXCEPTION>(*this->internal)->get_property_slot(key);
   }
 }
 

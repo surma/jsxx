@@ -155,8 +155,8 @@ static JSValue json_stringify(JSValue thisArg, std::vector<JSValue> &args) {
 
 JSValue create_JSON_global() {
   JSValue global = JSValue::new_object(
-      {{JSValue{"parse"}, JSValue::new_function(json_parse)},
-       {JSValue{"stringify"}, JSValue::new_function(json_stringify)}});
+      {{JSValue{"parse"}, JSValue::new_function(&json_parse)},
+       {JSValue{"stringify"}, JSValue::new_function(&json_stringify)}});
 
   return global;
 }

@@ -22,7 +22,8 @@ class JSBase {
 public:
   JSBase();
 
-  JSValueBinding get_property(JSValue key);
+  virtual JSValue get_property(JSValue key);
+  virtual JSValueBinding get_property_slot(JSValue key);
 
   std::vector<std::pair<JSValue, JSValueBinding>> properties;
 };
@@ -52,7 +53,8 @@ public:
   JSArray();
   JSArray(std::vector<JSValue> data);
 
-  JSValueBinding operator[](const JSValue idx);
+  virtual JSValueBinding get_property_slot(JSValue key);
+
   std::vector<JSValueBinding> internal;
 
   static JSValue push_impl(JSValue thisArg, std::vector<JSValue> &args);
@@ -65,7 +67,8 @@ public:
   JSObject();
   JSObject(std::vector<std::pair<JSValue, JSValue>> data);
 
-  JSValueBinding operator[](const JSValue idx);
+  virtual JSValueBinding get_property_slot(JSValue key);
+
   std::vector<std::pair<JSValue, JSValueBinding>> internal;
 };
 

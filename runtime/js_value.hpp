@@ -58,9 +58,9 @@ public:
   JSValue operator==(const JSValue other);
   JSValue operator+(JSValue other);
   JSValue operator*(JSValue other);
-  JSValueBinding operator[](const JSValue index);
-  JSValueBinding operator[](const char *index);
-  JSValueBinding operator[](const size_t index);
+  JSValue operator[](const JSValue index);
+  JSValue operator[](const char *index);
+  JSValue operator[](const size_t index);
   JSValue operator()(std::vector<JSValue> args);
 
   static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
@@ -68,7 +68,8 @@ public:
   static JSValue new_function(ExternFunc f);
   static JSValue undefined();
 
-  JSValueBinding get_property(const JSValue key);
+  JSValue get_property(const JSValue key);
+  JSValueBinding get_property_slot(const JSValue key);
   JSValue apply(JSValue thisArg, std::vector<JSValue> args);
 
   JSValueType type() const;
