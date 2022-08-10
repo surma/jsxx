@@ -113,6 +113,46 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn array_literals() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"]
+                WASI.write_to_stdout(v.join(","));
+            "#,
+            "array_literals",
+        )?;
+        assert_eq!(output, "a,b,c");
+        Ok(())
+    }
+
+    #[test]
+    fn array_push() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b"];
+                v.push("c");
+                WASI.write_to_stdout(v.join(","));
+            "#,
+            "array_push",
+        )?;
+        assert_eq!(output, "a,b,c");
+        Ok(())
+    }
+
+    #[test]
+    fn array_map() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"];
+                WASI.write_to_stdout(v.map(v => v + "!").join(","));
+            "#,
+            "array_map",
+        )?;
+        assert_eq!(output, "a!,b!,c!");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>, S: AsRef<str>>(code: T, name: S) -> Result<String> {
         let cpp = js_to_cpp(code)?;
         cpp_to_binary(cpp, name.as_ref(), vec![])?;
@@ -120,6 +160,7 @@ mod test {
             .stdout(Stdio::piped())
             .spawn()?;
         let output = child.wait_with_output()?;
+        std::fs::remove_file(name.as_ref())?;
         Ok(String::from_utf8(output.stdout)?)
     }
 }
