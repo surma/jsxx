@@ -206,7 +206,7 @@ JSValueBinding JSValue::get_property_slot(const JSValue key) {
             ->get_property_slot(key);
     break;
   };
-  v.get().parent_value = std::optional{shared_ptr<JSValue>{new JSValue{*this}}};
+  v.set_parent(*this);
   return v;
 }
 

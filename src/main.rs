@@ -324,6 +324,18 @@ mod test {
     }
 
     #[test]
+    fn array_length() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"];
+                WASI.write_to_stdout(v.length > 2 ? "yes" : "no");
+            "#,
+        )?;
+        assert_eq!(output, "yes");
+        Ok(())
+    }
+
+    #[test]
     fn object_lit() -> Result<()> {
         let output = compile_and_run(
             r#"

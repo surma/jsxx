@@ -20,7 +20,10 @@ public:
 
   void operator=(JSValue other);
 
-  JSValue &get();
+  JSValue get();
+  void set_parent(JSValue parent);
 
+  std::optional<shared_ptr<JSValue>> getter = std::nullopt;
+  std::optional<shared_ptr<JSValue>> setter = std::nullopt;
   shared_ptr<JSValue> internal;
 };
