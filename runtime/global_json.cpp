@@ -124,7 +124,9 @@ static std::string json_stringify_array(JSArray v) {
     result += json_stringify_value(v.get());
     result += ",";
   }
-  result = result.substr(0, result.size() - 1);
+  if (v.internal.size() >= 1) {
+    result = result.substr(0, result.size() - 1);
+  }
   result += "]";
   return result;
 }

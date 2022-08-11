@@ -385,6 +385,18 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn json_stringify_array() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {x: []};
+                WASI.write_to_stdout(JSON.stringify(v));
+            "#,
+        )?;
+        assert_eq!(output, r#"{"x":[]}"#);
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
