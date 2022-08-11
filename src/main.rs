@@ -277,6 +277,31 @@ mod test {
     }
 
     #[test]
+    fn array_filter() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = [1, 2, 3, 4, 5];
+                WASI.write_to_stdout(v.filter(v => v % 2 == 0).length == 2 ? "yes" : "no");
+            "#,
+        )?;
+        assert_eq!(output, "yes");
+        Ok(())
+    }
+
+    #[test]
+    fn array_reduce() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"].reduce((acc, c) => acc + c, "X");
+                let v2 = ["a", "b", "c"].reduce((acc, c) => acc + c);
+                WASI.write_to_stdout(v + v2);
+            "#,
+        )?;
+        assert_eq!(output, "Xabcabc");
+        Ok(())
+    }
+
+    #[test]
     fn object_lit() -> Result<()> {
         let output = compile_and_run(
             r#"

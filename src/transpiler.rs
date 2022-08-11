@@ -281,6 +281,7 @@ impl Transpiler {
             BinaryOp::NotEqEq => "!=",
             BinaryOp::LogicalAnd => "&&",
             BinaryOp::LogicalOr => "||",
+            BinaryOp::Mod => "%",
             _ => return Err(anyhow!("Unsupported binary operation {:?}", bin_expr.op)),
         };
         Ok(format!("({}){}({})", left, op, right))

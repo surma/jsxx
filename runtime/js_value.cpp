@@ -145,6 +145,16 @@ JSValue JSValue::operator*(JSValue other) {
   return JSValue{"Multiplication not implemented for this type yet"};
 }
 
+JSValue JSValue::operator%(JSValue other) {
+  if (this->type() == JSValueType::NUMBER) {
+    return JSValue{static_cast<double>(
+        static_cast<uint32_t>(
+            std::get<JSValueType::NUMBER>(*this->internal).internal) %
+        static_cast<uint32_t>(other.coerce_to_double()))};
+  }
+  return JSValue{"Modulo not implemented for this type yet"};
+}
+
 JSValue JSValue::operator[](const JSValue key) {
   return this->get_property(key);
 }

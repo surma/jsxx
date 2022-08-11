@@ -35,6 +35,10 @@ std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
      JSValueBinding::with_value(JSValue::new_function(&JSArray::push_impl))},
     {JSValue{"map"},
      JSValueBinding::with_value(JSValue::new_function(&JSArray::map_impl))},
+    {JSValue{"filter"},
+     JSValueBinding::with_value(JSValue::new_function(&JSArray::filter_impl))},
+    {JSValue{"reduce"},
+     JSValueBinding::with_value(JSValue::new_function(&JSArray::reduce_impl))},
     {JSValue{"join"},
      JSValueBinding::with_value(JSValue::new_function(&JSArray::join_impl))},
 };
@@ -74,6 +78,48 @@ JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
         f({arr->internal[i].get(), JSValue{static_cast<double>(i)}})));
   }
   return JSValue{result_arr};
+}
+
+JSValue JSArray::filter_impl(JSValue thisArg, std::vector<JSValue> &args) {
+  if (thisArg.type() != JSValueType::ARRAY)
+    return JSValue::undefined();
+  JSValue f = args[0];
+  if (f.type() != JSValueType::FUNCTION)
+    return JSValue::undefined();
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  JSArray result_arr{};
+  for (int i = 0; i < arr->internal.size(); i++) {
+    if (f({arr->internal[i], JSValue{static_cast<double>(i)}})
+            .coerce_to_bool()) {
+      result_arr.internal.push_back(arr->internal[i]);
+    }
+  }
+  return JSValue{result_arr};
+}
+
+JSValue JSArray::reduce_impl(JSValue thisArg, std::vector<JSValue> &args) {
+  if (thisArg.type() != JSValueType::ARRAY)
+    return JSValue::undefined();
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+
+  if (args[0].type() != JSValueType::FUNCTION)
+    return JSValue::undefined();
+  JSValue f = args[0];
+
+  int i;
+  JSValue acc;
+  if (args.size() >= 2 && !args[1].is_undefined()) {
+    i = 0;
+    acc = args[1];
+  } else if (arr->internal.size() >= 1) {
+    i = 1;
+    acc = arr->internal[0];
+  }
+
+  for (; i < arr->internal.size(); i++) {
+    acc = f({acc, arr->internal[i], JSValue{static_cast<double>(i)}});
+  }
+  return acc;
 }
 
 JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {

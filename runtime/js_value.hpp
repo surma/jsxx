@@ -69,6 +69,7 @@ public:
   JSValue operator||(const JSValue other);
   JSValue operator+(JSValue other);
   JSValue operator*(JSValue other);
+  JSValue operator%(JSValue other);
   JSValue operator[](const JSValue index);
   JSValue operator[](const char *index);
   JSValue operator[](const size_t index);
