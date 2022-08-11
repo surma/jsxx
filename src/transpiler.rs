@@ -150,8 +150,16 @@ impl Transpiler {
             Expr::Fn(fn_expr) => self.transpile_fn_expr(fn_expr),
             Expr::This(this_expr) => self.transpile_this_expr(this_expr),
             Expr::Assign(assign_expr) => self.transpile_assign_expr(assign_expr),
+            Expr::Cond(cond_expr) => self.transpile_cond_expr(cond_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
+    }
+
+    fn transpile_cond_expr(&mut self, cond_expr: &CondExpr) -> Result<String> {
+        let test = self.transpile_expr(&cond_expr.test)?;
+        let cons = self.transpile_expr(&cond_expr.cons)?;
+        let alt = self.transpile_expr(&cond_expr.alt)?;
+        Ok(format!("({}).coerce_to_bool()?({}):({})", test, cons, alt))
     }
 
     fn transpile_assign_expr(&mut self, assign_expr: &AssignExpr) -> Result<String> {
@@ -263,9 +271,19 @@ impl Transpiler {
         let op = match bin_expr.op {
             BinaryOp::Add => "+",
             BinaryOp::Mul => "*",
+            BinaryOp::Gt => ">",
+            BinaryOp::GtEq => ">=",
+            BinaryOp::EqEq => "==",
+            BinaryOp::EqEqEq => "==",
+            BinaryOp::Lt => "<",
+            BinaryOp::LtEq => "<=",
+            BinaryOp::NotEq => "!=",
+            BinaryOp::NotEqEq => "!=",
+            BinaryOp::LogicalAnd => "&&",
+            BinaryOp::LogicalOr => "||",
             _ => return Err(anyhow!("Unsupported binary operation {:?}", bin_expr.op)),
         };
-        Ok(format!("{}{}{}", left, op, right))
+        Ok(format!("({}){}({})", left, op, right))
     }
 
     fn transpile_param_destructure<'a>(

@@ -96,7 +96,8 @@ JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {
 JSValueBinding JSArray::get_property_slot(const JSValue key) {
   if (key.type() == JSValueType::NUMBER) {
     auto idx = static_cast<size_t>(key.coerce_to_double());
-    if(idx >= this->internal.size()) return JSValueBinding::with_value(JSValue::undefined());
+    if (idx >= this->internal.size())
+      return JSValueBinding::with_value(JSValue::undefined());
     return this->internal[idx];
   }
   return JSBase::get_property_slot(key);

@@ -1,15 +1,15 @@
 #pragma once
 
 #include <memory>
-#include <variant>
 #include <optional>
+#include <variant>
 
 #include "js_primitives.hpp"
 #include "js_value_binding.hpp"
 
+using std::optional;
 using std::shared_ptr;
 using std::unique_ptr;
-using std::optional;
 
 class JSUndefined;
 class JSBool;
@@ -49,15 +49,24 @@ public:
   JSValue(const char *v);
   JSValue(std::string v);
   JSValue(JSString v);
-  JSValue(const JSValue &v);
   JSValue(JSFunction v);
   JSValue(JSObject v);
   JSValue(JSArray v);
+  JSValue(const JSValue *v);
+  JSValue(const JSValue &v);
   JSValue(JSValueBinding v);
 
   JSValue operator=(JSValue other);
   // JSValue& operator=(JSValue& other);
   JSValue operator==(const JSValue other);
+  JSValue operator!();
+  JSValue operator<(const JSValue other);
+  JSValue operator<=(const JSValue other);
+  JSValue operator>(const JSValue other);
+  JSValue operator!=(const JSValue other);
+  JSValue operator>=(const JSValue other);
+  JSValue operator&&(const JSValue other);
+  JSValue operator||(const JSValue other);
   JSValue operator+(JSValue other);
   JSValue operator*(JSValue other);
   JSValue operator[](const JSValue index);

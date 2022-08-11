@@ -146,6 +146,29 @@ mod test {
     }
 
     #[test]
+    fn ternary() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                WASI.write_to_stdout(2 == 3 ? "yes" : "no");
+            "#,
+        )?;
+        assert_eq!(output, "no");
+        Ok(())
+    }
+
+    #[test]
+    fn compare() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let b = (2 == 2) && (3 != 4) && (1 < 2) && (2<=2) && (3>=3) && (4 > 3);
+                WASI.write_to_stdout(b ? "yes" : "no");
+            "#,
+        )?;
+        assert_eq!(output, "yes");
+        Ok(())
+    }
+
+    #[test]
     fn arrow_func() -> Result<()> {
         let output = compile_and_run(
             r#"
