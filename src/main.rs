@@ -217,6 +217,28 @@ mod test {
     }
 
     #[test]
+    fn if_else() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a;
+                if(1 == 1) {
+                    a = "y";
+                } else {
+                    a = "n";
+                }
+                let b;
+                if(1 == 2) {
+                    b = "y";
+                } else {
+                    b = "n";
+                }
+                WASI.write_to_stdout(a + b);
+            "#,
+        )?;
+        assert_eq!(output, "yn");
+        Ok(())
+    }
+    #[test]
     fn number_coalesc() -> Result<()> {
         let output = compile_and_run(
             r#"

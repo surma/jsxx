@@ -84,8 +84,30 @@ impl Transpiler {
             Stmt::Expr(expr_stmt) => Ok(format!("{};", self.transpile_expr(&expr_stmt.expr)?)),
             Stmt::Block(block_stmt) => self.transpile_block_stmt(block_stmt),
             Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt),
+            Stmt::If(if_stmt) => self.transpile_if_stmt(if_stmt),
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
         }
+    }
+
+    fn transpile_if_stmt(&mut self, if_stmt: &IfStmt) -> Result<String> {
+        let test = self.transpile_expr(&if_stmt.test)?;
+        let cons = self.transpile_stmt(&if_stmt.cons)?;
+        let alt = if_stmt
+            .alt
+            .as_ref()
+            .map(|alt| self.transpile_stmt(alt.as_ref()))
+            .transpose()?
+            .unwrap_or("".into());
+        Ok(format!(
+            r#"
+                if(({}).coerce_to_bool()) {{
+                    {}
+                }} else {{
+                    {}
+                }}
+            "#,
+            test, cons, alt
+        ))
     }
 
     fn transpile_return_stmt(&mut self, return_stmt: &ReturnStmt) -> Result<String> {
@@ -129,9 +151,9 @@ impl Transpiler {
         let init = var_decl
             .init
             .as_ref()
-            .map(|init| self.transpile_expr(&init))
+            .map(|init| -> Result<String> { Ok(format!(" = {}", self.transpile_expr(&init)?)) })
             .unwrap_or(Ok("".to_string()))?;
-        Ok(format!("auto {} = {};", ident.sym, init))
+        Ok(format!("JSValue {}{};", ident.sym, init))
     }
 
     fn transpile_expr(&mut self, expr: &Expr) -> Result<String> {
