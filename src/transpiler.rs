@@ -243,6 +243,9 @@ impl Transpiler {
             .map(|prop| match prop {
                 PropOrSpread::Spread(_) => return Err(anyhow!("Object spread unsupported")),
                 PropOrSpread::Prop(prop) => match prop.as_ref() {
+                    Prop::Shorthand(ident) => {
+                        Ok(format!(r#"{{JSValue{{"{0}"}}, {0}}}"#, ident.sym))
+                    }
                     Prop::KeyValue(key_value) => Ok(format!(
                         "{{{}, {}}}",
                         self.transpile_prop_name(&key_value.key)?,
