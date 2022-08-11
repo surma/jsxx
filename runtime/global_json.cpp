@@ -17,14 +17,16 @@ static void eat_whitespace(const char **cur) {
 
 static JSValue json_parse_string(const char **input) {
   const char *cur = *input + 1;
+  std::string output;
   while (*cur != '"') {
-    if (*cur == '\\')
+    if (*cur == '\\') {
       cur++;
+    }
+    output += *cur;
     cur++;
   }
-  JSValue result{std::string(*input + 1, cur - (*input + 1))};
   *input = ++cur;
-  return result;
+  return JSValue{output};
 }
 
 static bool is_digit(const char x) { return x >= '0' && x <= '9'; }
@@ -148,7 +150,7 @@ static std::string json_stringify_value(JSValue v) {
     return json_stringify_number(std::get<JSValueType::NUMBER>(*v.internal));
   if (v.type() == JSValueType::STRING)
     return json_stringify_string(std::get<JSValueType::STRING>(*v.internal));
-  return "<IDK MAN>";
+  return std::string("<IDK MAN>");
 }
 
 static JSValue json_stringify(JSValue thisArg, std::vector<JSValue> &args) {

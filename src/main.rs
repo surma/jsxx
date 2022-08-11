@@ -397,6 +397,18 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn json_parse_string_escapes() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = JSON.parse("\"x\n\"");
+                WASI.write_to_stdout(v);
+            "#,
+        )?;
+        assert_eq!(output, "x\n");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
