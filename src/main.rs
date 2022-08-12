@@ -16,9 +16,16 @@ mod transpiler;
 #[derive(Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// Emit cpp code to stdout rather than compiling it.
+    /// Path to clang++
+    #[clap(long = "clang-path", default_value = "clang++", value_parser)]
+    clang_path: String,
+
+    /// Emit cpp code to stdout rather than compiling it
     #[clap(long = "emit-cpp", default_value_t = false, value_parser)]
     emit_cpp: bool,
+
+    /// Extra flags to path to clang++
+    extra_flags: Vec<String>,
 }
 
 fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
@@ -44,40 +51,42 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
     transpiler.transpile_module(&module)
 }
 
-fn cpp_to_binary<T: AsRef<str>, S: AsRef<str>>(
-    code: T,
-    outputname: S,
-    flags: Vec<&str>,
+fn cpp_to_binary(
+    code: String,
+    outputname: String,
+    clang_path: String,
+    flags: &[String],
 ) -> Result<()> {
-    let cpp_file_name = format!("./{}.cpp", outputname.as_ref());
+    let cpp_file_name = format!("./{}.cpp", outputname);
     let mut tempfile = File::create(&cpp_file_name)?;
-    tempfile.write_all(code.as_ref().as_bytes())?;
+    tempfile.write_all(code.as_bytes())?;
     tempfile.flush();
     drop(tempfile);
 
-    let mut child = Command::new("clang++")
+    let args = flags
+        .into_iter()
+        .map(|i| i.as_ref())
+        .chain(
+            [
+                "--std=c++17",
+                "-o",
+                outputname.as_ref(),
+                cpp_file_name.as_ref(),
+                "runtime/global_json.cpp",
+                "runtime/global_wasi.cpp",
+                "runtime/js_primitives.cpp",
+                "runtime/js_value_binding.cpp",
+                "runtime/js_value.cpp",
+            ]
+            .into_iter(),
+        )
+        .collect::<Vec<&str>>();
+
+    let mut child = Command::new(&clang_path)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .args(
-            flags
-                .into_iter()
-                .chain(
-                    [
-                        "--std=c++17",
-                        "-o",
-                        outputname.as_ref(),
-                        cpp_file_name.as_ref(),
-                        "runtime/global_json.cpp",
-                        "runtime/global_wasi.cpp",
-                        "runtime/js_primitives.cpp",
-                        "runtime/js_value_binding.cpp",
-                        "runtime/js_value.cpp",
-                    ]
-                    .into_iter(),
-                )
-                .collect::<Vec<&str>>(),
-        )
+        .args(args)
         .spawn()?;
 
     child.wait()?;
@@ -98,7 +107,12 @@ fn main() -> Result<()> {
             command_utils::pipe_through_shell::<String>("clang-format", &[], cpp_code.as_bytes())?;
         println!("{}", String::from_utf8(stdout)?);
     } else {
-        cpp_to_binary(cpp_code, "output", vec![])?;
+        cpp_to_binary(
+            cpp_code,
+            "output".to_string(),
+            args.clang_path,
+            &args.extra_flags,
+        )?;
     }
     Ok(())
 }
@@ -438,7 +452,12 @@ mod test {
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
-        cpp_to_binary(cpp, &name, vec![])?;
+        cpp_to_binary(
+            cpp,
+            name.clone(),
+            "clang++".to_string(),
+            &Vec::<String>::new(),
+        )?;
         let mut child = Command::new(format!("./{}", &name))
             .stdout(Stdio::piped())
             .spawn()?;
