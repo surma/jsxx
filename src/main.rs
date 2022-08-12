@@ -204,6 +204,41 @@ mod test {
         Ok(())
     }
 
+    #[ignore]
+    #[test]
+    fn closure_simple() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let x = "wrong";
+                function a() {
+                    x = "hi";
+                }
+
+                a();
+                IO.write_to_stdout(x);
+            "#,
+        )?;
+        assert!(output.starts_with("hi"));
+        Ok(())
+    }
+
+    #[test]
+    fn closure_obj() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let x = {value: "wrong"};
+                function a() {
+                    x.value = "hi";
+                }
+
+                a();
+                IO.write_to_stdout(x.value);
+            "#,
+        )?;
+        assert!(output.starts_with("hi"));
+        Ok(())
+    }
+
     #[test]
     fn func_decl() -> Result<()> {
         let output = compile_and_run(

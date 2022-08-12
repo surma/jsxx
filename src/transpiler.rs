@@ -220,9 +220,10 @@ impl Transpiler {
             _ => return Err(anyhow!("Function lacks a body")),
         };
         Ok(format!(
-            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{
+            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
                     {}
                     {}
+                    return JSValue::undefined();
                 }})",
             param_destructure, body
         ))
