@@ -170,6 +170,11 @@ JSObject::JSObject(std::vector<std::pair<JSValue, JSValue>> data) : JSObject() {
   }
 };
 
+JSObject::JSObject(std::vector<std::pair<JSValue, JSValueBinding>> data)
+    : JSObject() {
+  *this->internal = data;
+};
+
 JSValueBinding JSObject::get_property_slot(const JSValue key) {
   auto obj = std::find_if(this->internal->begin(), this->internal->end(),
                           [=](std::pair<JSValue, JSValueBinding> &item) {

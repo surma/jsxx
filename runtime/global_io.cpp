@@ -28,8 +28,10 @@ static JSValue read_from_stdin(JSValue thisArg, std::vector<JSValue> &args) {
 
 JSValue create_IO_global() {
   JSValue global = JSValue::new_object(
-      {{JSValue{"read_from_stdin"}, JSValue::new_function(read_from_stdin)},
-       {JSValue{"write_to_stdout"}, JSValue::new_function(write_to_stdout)}});
+      {{JSValue{"read_from_stdin"},
+        JSValueBinding::with_value(JSValue::new_function(read_from_stdin))},
+       {JSValue{"write_to_stdout"},
+        JSValueBinding::with_value(JSValue::new_function(write_to_stdout))}});
 
   return global;
 }

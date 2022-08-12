@@ -57,7 +57,8 @@ JSValue::JSValue(JSValueBinding v)
     : internal{new Box{*v.get().internal}}, parent_value{} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
-JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
+JSValue
+JSValue::new_object(std::vector<std::pair<JSValue, JSValueBinding>> pairs) {
   return JSValue{JSObject{pairs}};
 }
 

@@ -21,11 +21,13 @@ public:
   JSValueBinding();
 
   static JSValueBinding with_value(JSValue val);
+  static JSValueBinding with_getter_setter(JSValue getter, JSValue setter);
 
   void operator=(JSValue other);
 
   JSValue get();
   void set_parent(JSValue parent);
+  JSValue get_parent();
 
   std::optional<Getter> getter = std::nullopt;
   std::optional<Setter> setter = std::nullopt;

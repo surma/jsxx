@@ -75,7 +75,7 @@ public:
   JSValue operator[](const size_t index);
   JSValue operator()(std::vector<JSValue> args);
 
-  static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
+  static JSValue new_object(std::vector<std::pair<JSValue, JSValueBinding>>);
   static JSValue new_array(std::vector<JSValue>);
   static JSValue new_function(ExternFunc f);
   static JSValue undefined();

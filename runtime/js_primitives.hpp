@@ -68,6 +68,7 @@ class JSObject : public JSBase {
 public:
   JSObject();
   JSObject(std::vector<std::pair<JSValue, JSValue>> data);
+  JSObject(std::vector<std::pair<JSValue, JSValueBinding>> data);
 
   virtual JSValueBinding get_property_slot(JSValue key);
 

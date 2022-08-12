@@ -439,6 +439,40 @@ mod test {
     }
 
     #[test]
+    fn object_getter() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let state = "hi";
+                let v = {
+                    get prop() {
+                        return state;
+                    },
+                };
+                IO.write_to_stdout(v.prop);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
+    fn object_getter_this() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {
+                    state: "hi",
+                    get prop() {
+                        return this.state;
+                    },
+                };
+                IO.write_to_stdout(v.prop);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
     fn json_stringify_array() -> Result<()> {
         let output = compile_and_run(
             r#"
