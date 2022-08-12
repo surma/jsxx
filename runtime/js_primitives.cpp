@@ -52,6 +52,12 @@ JSArray::JSArray() : JSBase(), internal{new std::vector<JSValueBinding>{}} {
   length_prop.getter = std::optional{[=](JSValueBinding b) {
     return JSValue{static_cast<double>(data->size())};
   }};
+  length_prop.setter = std::optional{[=](JSValueBinding b, JSValue v) {
+    if (v.type() != JSValueType::NUMBER)
+      return;
+    data->resize(static_cast<size_t>(v.coerce_to_double()),
+                 JSValueBinding::with_value(JSValue{}));
+  }};
   this->properties.push_back({JSValue{"length"}, length_prop});
 };
 

@@ -352,6 +352,19 @@ mod test {
     }
 
     #[test]
+    fn array_set_length() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"];
+                v.length = 2;
+                IO.write_to_stdout(v.join(","));
+            "#,
+        )?;
+        assert_eq!(output, "a,b");
+        Ok(())
+    }
+
+    #[test]
     fn array_length() -> Result<()> {
         let output = compile_and_run(
             r#"
