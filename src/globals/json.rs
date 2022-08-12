@@ -1,6 +1,6 @@
 use crate::globals::Global;
 
-pub fn JSONGlobal() -> Global {
+pub fn json_global() -> Global {
     Global {
         name: "JSON".into(),
         additional_headers: Some(vec!["runtime/global_json.hpp".into()]),

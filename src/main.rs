@@ -46,8 +46,8 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
 
     let mut transpiler = transpiler::Transpiler::new();
-    transpiler.globals.push(globals::wasi::WASIGlobal());
-    transpiler.globals.push(globals::json::JSONGlobal());
+    transpiler.globals.push(globals::io::io_global());
+    transpiler.globals.push(globals::json::json_global());
     transpiler.transpile_module(&module)
 }
 
@@ -73,7 +73,7 @@ fn cpp_to_binary(
                 outputname.as_ref(),
                 cpp_file_name.as_ref(),
                 "runtime/global_json.cpp",
-                "runtime/global_wasi.cpp",
+                "runtime/global_io.cpp",
                 "runtime/js_primitives.cpp",
                 "runtime/js_value_binding.cpp",
                 "runtime/js_value.cpp",
@@ -127,7 +127,7 @@ mod test {
     fn basic_program() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("hello");
+                IO.write_to_stdout("hello");
             "#,
         )?;
         assert_eq!(output, "hello");
@@ -139,7 +139,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let a = "hello";
-                WASI.write_to_stdout(a);
+                IO.write_to_stdout(a);
             "#,
         )?;
         assert_eq!(output, "hello");
@@ -152,7 +152,7 @@ mod test {
             r#"
                 let a = "hi";
                 a = "hello";
-                WASI.write_to_stdout(a);
+                IO.write_to_stdout(a);
             "#,
         )?;
         assert_eq!(output, "hello");
@@ -163,7 +163,7 @@ mod test {
     fn ternary() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout(2 == 3 ? "yes" : "no");
+                IO.write_to_stdout(2 == 3 ? "yes" : "no");
             "#,
         )?;
         assert_eq!(output, "no");
@@ -175,7 +175,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let b = (2 == 2) && (3 != 4) && (1 < 2) && (2<=2) && (3>=3) && (4 > 3);
-                WASI.write_to_stdout(b ? "yes" : "no");
+                IO.write_to_stdout(b ? "yes" : "no");
             "#,
         )?;
         assert_eq!(output, "yes");
@@ -186,7 +186,7 @@ mod test {
     fn arrow_func() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + (() => "test")());
+                IO.write_to_stdout("" + (() => "test")());
             "#,
         )?;
         assert!(output.starts_with("test"));
@@ -197,7 +197,7 @@ mod test {
     fn arrow_func_with_body() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + (() => { 1 + 1; return "test";})());
+                IO.write_to_stdout("" + (() => { 1 + 1; return "test";})());
             "#,
         )?;
         assert!(output.starts_with("test"));
@@ -212,7 +212,7 @@ mod test {
                     return "test";
                 }
 
-                WASI.write_to_stdout("" + a());
+                IO.write_to_stdout("" + a());
             "#,
         )?;
         assert!(output.starts_with("test"));
@@ -223,7 +223,7 @@ mod test {
     fn full_func() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + (function () { return "test";})());
+                IO.write_to_stdout("" + (function () { return "test";})());
             "#,
         )?;
         assert!(output.starts_with("test"));
@@ -246,7 +246,7 @@ mod test {
                 } else {
                     b = "n";
                 }
-                WASI.write_to_stdout(a + b);
+                IO.write_to_stdout(a + b);
             "#,
         )?;
         assert_eq!(output, "yn");
@@ -256,7 +256,7 @@ mod test {
     fn number_coalesc() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + 123);
+                IO.write_to_stdout("" + 123);
             "#,
         )?;
         assert!(output.starts_with("123."));
@@ -268,7 +268,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = ["a", "b", "c"]
-                WASI.write_to_stdout(v.join(","));
+                IO.write_to_stdout(v.join(","));
             "#,
         )?;
         assert_eq!(output, "a,b,c");
@@ -282,7 +282,7 @@ mod test {
                 let v = ["a", "b", "c"]
                 let x = v;
                 x.push("d");
-                WASI.write_to_stdout(v.join(","));
+                IO.write_to_stdout(v.join(","));
             "#,
         )?;
         assert_eq!(output, "a,b,c,d");
@@ -294,7 +294,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = ["a", "b"];
-                WASI.write_to_stdout(v[0] + v[1]);
+                IO.write_to_stdout(v[0] + v[1]);
             "#,
         )?;
         assert_eq!(output, "ab");
@@ -307,7 +307,7 @@ mod test {
             r#"
                 let v = ["a", "b"];
                 v.push("c");
-                WASI.write_to_stdout(v.join(","));
+                IO.write_to_stdout(v.join(","));
             "#,
         )?;
         assert_eq!(output, "a,b,c");
@@ -319,7 +319,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = ["a", "b", "c"];
-                WASI.write_to_stdout(v.map(v => v + "!").join(","));
+                IO.write_to_stdout(v.map(v => v + "!").join(","));
             "#,
         )?;
         assert_eq!(output, "a!,b!,c!");
@@ -331,7 +331,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = [1, 2, 3, 4, 5];
-                WASI.write_to_stdout(v.filter(v => v % 2 == 0).length == 2 ? "yes" : "no");
+                IO.write_to_stdout(v.filter(v => v % 2 == 0).length == 2 ? "yes" : "no");
             "#,
         )?;
         assert_eq!(output, "yes");
@@ -344,7 +344,7 @@ mod test {
             r#"
                 let v = ["a", "b", "c"].reduce((acc, c) => acc + c, "X");
                 let v2 = ["a", "b", "c"].reduce((acc, c) => acc + c);
-                WASI.write_to_stdout(v + v2);
+                IO.write_to_stdout(v + v2);
             "#,
         )?;
         assert_eq!(output, "Xabcabc");
@@ -356,7 +356,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = ["a", "b", "c"];
-                WASI.write_to_stdout(v.length > 2 ? "yes" : "no");
+                IO.write_to_stdout(v.length > 2 ? "yes" : "no");
             "#,
         )?;
         assert_eq!(output, "yes");
@@ -368,7 +368,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {a: "v"};
-                WASI.write_to_stdout(v.a);
+                IO.write_to_stdout(v.a);
             "#,
         )?;
         assert_eq!(output, "v");
@@ -380,7 +380,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {a: () => "hi"};
-                WASI.write_to_stdout(v.a());
+                IO.write_to_stdout(v.a());
             "#,
         )?;
         assert_eq!(output, "hi");
@@ -392,7 +392,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {marker: "flag", a: function() { return this.marker; }};
-                WASI.write_to_stdout(v.a());
+                IO.write_to_stdout(v.a());
             "#,
         )?;
         assert_eq!(output, "flag");
@@ -405,7 +405,7 @@ mod test {
             r#"
                 let v = {marker: "flag"};
                 v.marker = "hi";
-                WASI.write_to_stdout(v.marker);
+                IO.write_to_stdout(v.marker);
             "#,
         )?;
         assert_eq!(output, "hi");
@@ -418,7 +418,7 @@ mod test {
             r#"
                 let a = "hi";
                 let v = {a};
-                WASI.write_to_stdout(v.a);
+                IO.write_to_stdout(v.a);
             "#,
         )?;
         assert_eq!(output, "hi");
@@ -430,7 +430,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {x: []};
-                WASI.write_to_stdout(JSON.stringify(v));
+                IO.write_to_stdout(JSON.stringify(v));
             "#,
         )?;
         assert_eq!(output, r#"{"x":[]}"#);
@@ -442,7 +442,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = JSON.parse("\"x\n\"");
-                WASI.write_to_stdout(v);
+                IO.write_to_stdout(v);
             "#,
         )?;
         assert_eq!(output, "x\n");

@@ -1,6 +1,5 @@
 
-#include "global_wasi.hpp"
-
+#include "global_json.hpp"
 #include <variant>
 #include <vector>
 
