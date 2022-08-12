@@ -456,6 +456,24 @@ mod test {
     }
 
     #[test]
+    fn object_setter() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let state = {v: "test"};
+                let v = {
+                    set prop(v) {
+                        state.v = v;
+                    },
+                };
+                v.prop = "hi";
+                IO.write_to_stdout(state.v);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
     fn object_getter_this() -> Result<()> {
         let output = compile_and_run(
             r#"

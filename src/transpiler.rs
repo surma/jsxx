@@ -246,6 +246,7 @@ impl Transpiler {
                     Prop::Shorthand(ident) => self.transpile_prop_shorthand(ident),
                     Prop::KeyValue(key_value) => self.transpile_prop_keyvalue(key_value),
                     Prop::Getter(getter) => self.transpile_prop_getter(getter),
+                    Prop::Setter(setter) => self.transpile_prop_setter(setter),
                     _ => Err(anyhow!("Unsupported object property {:?}", prop)),
                 },
             })
@@ -254,13 +255,37 @@ impl Transpiler {
         Ok(format!("JSValue::new_object({{ {} }})", prop_defs))
     }
 
+    fn transpile_prop_setter(&mut self, setter: &SetterProp) -> Result<String> {
+        let ident = setter
+            .param
+            .as_ident()
+            .ok_or(anyhow!("Setter parameter must be an ident"))?;
+        Ok(format!(
+            r#"{{
+                {},
+                JSValueBinding::with_getter_setter(
+                    JSValue::undefined(),
+                    JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
+                        JSValue {} = args[0];
+                        {}
+                        return JSValue::undefined();
+                    }})
+                )
+            }}"#,
+            self.transpile_prop_name(&setter.key)?,
+            ident.sym,
+            self.transpile_block_stmt(setter.body.as_ref().ok_or(anyhow!("Getter needs a body"))?)?
+        ))
+    }
+
     fn transpile_prop_getter(&mut self, getter: &GetterProp) -> Result<String> {
         Ok(format!(
             r#"{{
                 {},
                 JSValueBinding::with_getter_setter(
-                    JSValue::new_function([=](JSValue thisArg, std::vector<JSValue> args) {{
+                    JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
                         {}
+                        return JSValue::undefined();
                     }}),
                     JSValue::undefined()
                 )

@@ -21,7 +21,7 @@ JSValueBinding JSValueBinding::with_getter_setter(JSValue getter,
     return f.call(b.get_parent(), params);
   }};
   b.setter = std::optional{[=](JSValueBinding b, JSValue v) {
-    if (getter.type() != JSValueType::FUNCTION)
+    if (setter.type() != JSValueType::FUNCTION)
       return;
     auto f = std::get<JSValueType::FUNCTION>(*setter.internal);
     std::vector<JSValue> params{v};
@@ -32,7 +32,7 @@ JSValueBinding JSValueBinding::with_getter_setter(JSValue getter,
 
 void JSValueBinding::operator=(JSValue other) {
   if (this->setter.has_value()) {
-    (this->setter.value())(*this, other);
+    (*this->setter)(*this, other);
     return;
   }
   *this->internal = JSValue{other};
