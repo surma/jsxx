@@ -11,7 +11,7 @@ JSValueBinding JSValueBinding::with_value(JSValue val) {
 
 void JSValueBinding::operator=(JSValue other) {
   if (this->setter.has_value()) {
-    (*this->setter.value())({other});
+    (this->setter.value())(*this, other);
     return;
   }
   *this->internal = JSValue{other};
@@ -19,7 +19,8 @@ void JSValueBinding::operator=(JSValue other) {
 
 JSValue JSValueBinding::get() {
   if (this->getter.has_value()) {
-    return (*this->getter.value())({});
+    return (*this->getter)(*this);
+    // return (this->getter.value())(*this);
   }
   return *this->internal;
 }

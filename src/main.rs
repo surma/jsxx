@@ -262,6 +262,20 @@ mod test {
     }
 
     #[test]
+    fn array_reference() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"]
+                let x = v;
+                x.push("d");
+                WASI.write_to_stdout(v.join(","));
+            "#,
+        )?;
+        assert_eq!(output, "a,b,c,d");
+        Ok(())
+    }
+
+    #[test]
     fn array_access() -> Result<()> {
         let output = compile_and_run(
             r#"

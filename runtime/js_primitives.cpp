@@ -47,12 +47,24 @@ JSArray::JSArray() : JSBase() {
   for (const auto &entry : JSArray_prototype) {
     this->properties.push_back(entry);
   }
+  auto length_prop = JSValueBinding::with_value(JSValue{0.0});
+  printf("Creating getter %x\n", this);
+  std::vector<JSValueBinding> *data = &this->internal;
+  length_prop.getter = std::optional{[=](JSValueBinding b) mutable {
+      // printf("CALLING GETTER %x %x %lu\n", this, &this->internal, this->internal.size());
+      data->push_back(JSValueBinding::with_value(JSValue{"ANOTHER"}));
+      printf(" CALLING GETTER %lu\n", data->size());
+      return JSValue{static_cast<double>(data->size())};
+  }};
+  this->properties.push_back({JSValue{"length"}, length_prop});
 };
 
 JSArray::JSArray(std::vector<JSValue> data) : JSArray() {
   for (auto v : data) {
     this->internal.push_back(JSValueBinding::with_value(v));
   }
+  printf("ptr = %x size = %d\n", this, this->internal.size());
+  printf("len = %f\n", this->get_property(JSValue({"length"})).coerce_to_double());
 }
 
 JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {

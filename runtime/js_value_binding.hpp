@@ -11,6 +11,10 @@ using std::optional;
 using std::shared_ptr;
 
 class JSValue;
+class JSValueBinding;
+
+using Getter = std::function<JSValue(JSValueBinding)>;
+using Setter = std::function<void(JSValueBinding, JSValue)>;
 
 class JSValueBinding {
 public:
@@ -23,7 +27,7 @@ public:
   JSValue get();
   void set_parent(JSValue parent);
 
-  std::optional<shared_ptr<JSValue>> getter = std::nullopt;
-  std::optional<shared_ptr<JSValue>> setter = std::nullopt;
+  std::optional<Getter> getter = std::nullopt;
+  std::optional<Setter> setter = std::nullopt;
   shared_ptr<JSValue> internal;
 };
