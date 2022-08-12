@@ -55,7 +55,7 @@ public:
 
   virtual JSValueBinding get_property_slot(JSValue key);
 
-  std::vector<JSValueBinding> internal;
+  shared_ptr<std::vector<JSValueBinding>> internal;
 
   static JSValue push_impl(JSValue thisArg, std::vector<JSValue> &args);
   static JSValue map_impl(JSValue thisArg, std::vector<JSValue> &args);

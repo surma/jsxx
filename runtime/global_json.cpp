@@ -74,7 +74,7 @@ static JSValue json_parse_array(const char **cur) {
   eat_whitespace(cur);
   while (**cur != ']') {
     auto value = json_parse_value(cur);
-    arr.internal.push_back(JSValueBinding::with_value(value));
+    arr.internal->push_back(JSValueBinding::with_value(value));
     eat_whitespace(cur);
     if (**cur == ',')
       (*cur)++;
@@ -122,11 +122,11 @@ static std::string json_stringify_object(JSObject v) {
 
 static std::string json_stringify_array(JSArray v) {
   std::string result = "[";
-  for (auto v : v.internal) {
+  for (auto v : *v.internal) {
     result += json_stringify_value(v.get());
     result += ",";
   }
-  if (v.internal.size() >= 1) {
+  if (v.internal->size() >= 1) {
     result = result.substr(0, result.size() - 1);
   }
   result += "]";
