@@ -72,11 +72,6 @@ JSValue JSValue::operator=(JSValue other) {
   return other;
 }
 
-// JSValue& JSValue::operator=(JSValue& other) {
-//   this->internal = unique_ptr<JSValue::Box>{new
-//   JSValue::Box{other.internal.get()}}; return other;
-// }
-
 JSValue JSValue::operator!() { return JSValue{!this->coerce_to_bool()}; }
 
 JSValue JSValue::operator==(const JSValue other) {

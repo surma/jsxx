@@ -57,7 +57,7 @@ static JSValue json_parse_object(const char **cur) {
     (*cur)++;
     eat_whitespace(cur);
     auto value = json_parse_value(cur);
-    obj.internal.push_back({key, JSValueBinding::with_value(value)});
+    obj.internal->push_back({key, JSValueBinding::with_value(value)});
     eat_whitespace(cur);
     if (**cur == ',')
       (*cur)++;
@@ -108,7 +108,7 @@ static std::string json_stringify_value(JSValue v);
 
 static std::string json_stringify_object(JSObject v) {
   std::string result = "{";
-  for (auto v : v.internal) {
+  for (auto v : *v.internal) {
     result += json_stringify_value(v.first);
     result += ":";
     result += json_stringify_value(v.second.get());

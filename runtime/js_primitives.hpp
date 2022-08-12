@@ -71,7 +71,7 @@ public:
 
   virtual JSValueBinding get_property_slot(JSValue key);
 
-  std::vector<std::pair<JSValue, JSValueBinding>> internal;
+  shared_ptr<std::vector<std::pair<JSValue, JSValueBinding>>> internal;
 };
 
 using ExternFunc = std::function<JSValue(JSValue, std::vector<JSValue> &)>;

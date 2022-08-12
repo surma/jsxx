@@ -161,19 +161,21 @@ JSValueBinding JSArray::get_property_slot(const JSValue key) {
   return JSBase::get_property_slot(key);
 }
 
-JSObject::JSObject() : JSBase(), internal{} {};
+JSObject::JSObject()
+    : JSBase(), internal{
+                    new std::vector<std::pair<JSValue, JSValueBinding>>{}} {};
 JSObject::JSObject(std::vector<std::pair<JSValue, JSValue>> data) : JSObject() {
   for (auto v : data) {
-    this->internal.push_back({v.first, JSValueBinding::with_value(v.second)});
+    this->internal->push_back({v.first, JSValueBinding::with_value(v.second)});
   }
 };
 
 JSValueBinding JSObject::get_property_slot(const JSValue key) {
-  auto obj = std::find_if(this->internal.begin(), this->internal.end(),
+  auto obj = std::find_if(this->internal->begin(), this->internal->end(),
                           [=](std::pair<JSValue, JSValueBinding> &item) {
                             return (item.first == key).coerce_to_bool();
                           });
-  if (obj == this->internal.end()) {
+  if (obj == this->internal->end()) {
     return JSBase::get_property_slot(key);
   }
   return (*obj).second;
