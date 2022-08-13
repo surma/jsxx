@@ -41,8 +41,6 @@ std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
      JSValueBinding::with_value(JSValue::new_function(&JSArray::reduce_impl))},
     {JSValue{"join"},
      JSValueBinding::with_value(JSValue::new_function(&JSArray::join_impl))},
-    {JSValue{"length"},
-     JSValueBinding::with_value(JSValue::new_function(&JSArray::length_impl))},
 };
 
 JSArray::JSArray() : JSBase() {
@@ -55,13 +53,6 @@ JSArray::JSArray(std::vector<JSValue> data) : JSArray() {
   for (auto v : data) {
     this->internal.push_back(JSValueBinding::with_value(v));
   }
-}
-
-JSValue JSArray::length_impl(JSValue thisArg, std::vector<JSValue> &args) {
-  if (thisArg.type() != JSValueType::ARRAY)
-    return JSValue::undefined();
-  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
-  return JSValue{static_cast<double>(arr->internal.size())};
 }
 
 JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {

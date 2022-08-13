@@ -62,7 +62,6 @@ public:
   static JSValue join_impl(JSValue thisArg, std::vector<JSValue> &args);
   static JSValue reduce_impl(JSValue thisArg, std::vector<JSValue> &args);
   static JSValue filter_impl(JSValue thisArg, std::vector<JSValue> &args);
-  static JSValue length_impl(JSValue thisArg, std::vector<JSValue> &args);
 };
 
 class JSObject : public JSBase {
