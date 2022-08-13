@@ -220,9 +220,10 @@ impl Transpiler {
             _ => return Err(anyhow!("Function lacks a body")),
         };
         Ok(format!(
-            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{
+            "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
                     {}
                     {}
+                    return JSValue::undefined();
                 }})",
             param_destructure, body
         ))
@@ -243,20 +244,71 @@ impl Transpiler {
             .map(|prop| match prop {
                 PropOrSpread::Spread(_) => return Err(anyhow!("Object spread unsupported")),
                 PropOrSpread::Prop(prop) => match prop.as_ref() {
-                    Prop::Shorthand(ident) => {
-                        Ok(format!(r#"{{JSValue{{"{0}"}}, {0}}}"#, ident.sym))
-                    }
-                    Prop::KeyValue(key_value) => Ok(format!(
-                        "{{{}, {}}}",
-                        self.transpile_prop_name(&key_value.key)?,
-                        self.transpile_expr(&key_value.value)?
-                    )),
+                    Prop::Shorthand(ident) => self.transpile_prop_shorthand(ident),
+                    Prop::KeyValue(key_value) => self.transpile_prop_keyvalue(key_value),
+                    Prop::Getter(getter) => self.transpile_prop_getter(getter),
+                    Prop::Setter(setter) => self.transpile_prop_setter(setter),
                     _ => Err(anyhow!("Unsupported object property {:?}", prop)),
                 },
             })
             .collect();
         let prop_defs = Result::<Vec<String>>::from_iter(transpiled_props)?.join(",\n");
         Ok(format!("JSValue::new_object({{ {} }})", prop_defs))
+    }
+
+    fn transpile_prop_setter(&mut self, setter: &SetterProp) -> Result<String> {
+        let ident = setter
+            .param
+            .as_ident()
+            .ok_or(anyhow!("Setter parameter must be an ident"))?;
+        Ok(format!(
+            r#"{{
+                {},
+                JSValueBinding::with_getter_setter(
+                    JSValue::undefined(),
+                    JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
+                        JSValue {} = args[0];
+                        {}
+                        return JSValue::undefined();
+                    }})
+                )
+            }}"#,
+            self.transpile_prop_name(&setter.key)?,
+            ident.sym,
+            self.transpile_block_stmt(setter.body.as_ref().ok_or(anyhow!("Getter needs a body"))?)?
+        ))
+    }
+
+    fn transpile_prop_getter(&mut self, getter: &GetterProp) -> Result<String> {
+        Ok(format!(
+            r#"{{
+                {},
+                JSValueBinding::with_getter_setter(
+                    JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
+                        {}
+                        return JSValue::undefined();
+                    }}),
+                    JSValue::undefined()
+                )
+            }}"#,
+            self.transpile_prop_name(&getter.key)?,
+            self.transpile_block_stmt(getter.body.as_ref().ok_or(anyhow!("Getter needs a body"))?)?
+        ))
+    }
+
+    fn transpile_prop_keyvalue(&mut self, key_value: &KeyValueProp) -> Result<String> {
+        Ok(format!(
+            "{{{}, JSValueBinding::with_value({})}}",
+            self.transpile_prop_name(&key_value.key)?,
+            self.transpile_expr(&key_value.value)?
+        ))
+    }
+
+    fn transpile_prop_shorthand(&mut self, ident: &Ident) -> Result<String> {
+        Ok(format!(
+            r#"{{JSValue{{"{0}"}}, JSValueBinding::with_value({0})}}"#,
+            ident.sym
+        ))
     }
 
     fn transpile_prop_name(&mut self, prop_name: &PropName) -> Result<String> {

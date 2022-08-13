@@ -57,7 +57,8 @@ JSValue::JSValue(JSValueBinding v)
     : internal{new Box{*v.get().internal}}, parent_value{} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
-JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
+JSValue
+JSValue::new_object(std::vector<std::pair<JSValue, JSValueBinding>> pairs) {
   return JSValue{JSObject{pairs}};
 }
 
@@ -71,11 +72,6 @@ JSValue JSValue::operator=(JSValue other) {
   this->internal = unique_ptr<JSValue::Box>{new JSValue::Box{*other.internal}};
   return other;
 }
-
-// JSValue& JSValue::operator=(JSValue& other) {
-//   this->internal = unique_ptr<JSValue::Box>{new
-//   JSValue::Box{other.internal.get()}}; return other;
-// }
 
 JSValue JSValue::operator!() { return JSValue{!this->coerce_to_bool()}; }
 
@@ -206,7 +202,7 @@ JSValueBinding JSValue::get_property_slot(const JSValue key) {
             ->get_property_slot(key);
     break;
   };
-  v.get().parent_value = std::optional{shared_ptr<JSValue>{new JSValue{*this}}};
+  v.set_parent(*this);
   return v;
 }
 

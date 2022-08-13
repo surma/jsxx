@@ -16,9 +16,16 @@ mod transpiler;
 #[derive(Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// Emit cpp code to stdout rather than compiling it.
+    /// Path to clang++
+    #[clap(long = "clang-path", default_value = "clang++", value_parser)]
+    clang_path: String,
+
+    /// Emit cpp code to stdout rather than compiling it
     #[clap(long = "emit-cpp", default_value_t = false, value_parser)]
     emit_cpp: bool,
+
+    /// Extra flags to path to clang++
+    extra_flags: Vec<String>,
 }
 
 fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
@@ -39,45 +46,47 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
 
     let mut transpiler = transpiler::Transpiler::new();
-    transpiler.globals.push(globals::wasi::WASIGlobal());
-    transpiler.globals.push(globals::json::JSONGlobal());
+    transpiler.globals.push(globals::io::io_global());
+    transpiler.globals.push(globals::json::json_global());
     transpiler.transpile_module(&module)
 }
 
-fn cpp_to_binary<T: AsRef<str>, S: AsRef<str>>(
-    code: T,
-    outputname: S,
-    flags: Vec<&str>,
+fn cpp_to_binary(
+    code: String,
+    outputname: String,
+    clang_path: String,
+    flags: &[String],
 ) -> Result<()> {
-    let cpp_file_name = format!("./{}.cpp", outputname.as_ref());
+    let cpp_file_name = format!("./{}.cpp", outputname);
     let mut tempfile = File::create(&cpp_file_name)?;
-    tempfile.write_all(code.as_ref().as_bytes())?;
+    tempfile.write_all(code.as_bytes())?;
     tempfile.flush();
     drop(tempfile);
 
-    let mut child = Command::new("clang++")
+    let args = flags
+        .into_iter()
+        .map(|i| i.as_ref())
+        .chain(
+            [
+                "--std=c++17",
+                "-o",
+                outputname.as_ref(),
+                cpp_file_name.as_ref(),
+                "runtime/global_json.cpp",
+                "runtime/global_io.cpp",
+                "runtime/js_primitives.cpp",
+                "runtime/js_value_binding.cpp",
+                "runtime/js_value.cpp",
+            ]
+            .into_iter(),
+        )
+        .collect::<Vec<&str>>();
+
+    let mut child = Command::new(&clang_path)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .args(
-            flags
-                .into_iter()
-                .chain(
-                    [
-                        "--std=c++17",
-                        "-o",
-                        outputname.as_ref(),
-                        cpp_file_name.as_ref(),
-                        "runtime/global_json.cpp",
-                        "runtime/global_wasi.cpp",
-                        "runtime/js_primitives.cpp",
-                        "runtime/js_value_binding.cpp",
-                        "runtime/js_value.cpp",
-                    ]
-                    .into_iter(),
-                )
-                .collect::<Vec<&str>>(),
-        )
+        .args(args)
         .spawn()?;
 
     child.wait()?;
@@ -98,7 +107,12 @@ fn main() -> Result<()> {
             command_utils::pipe_through_shell::<String>("clang-format", &[], cpp_code.as_bytes())?;
         println!("{}", String::from_utf8(stdout)?);
     } else {
-        cpp_to_binary(cpp_code, "output", vec![])?;
+        cpp_to_binary(
+            cpp_code,
+            "output".to_string(),
+            args.clang_path,
+            &args.extra_flags,
+        )?;
     }
     Ok(())
 }
@@ -113,7 +127,7 @@ mod test {
     fn basic_program() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("hello");
+                IO.write_to_stdout("hello");
             "#,
         )?;
         assert_eq!(output, "hello");
@@ -125,7 +139,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let a = "hello";
-                WASI.write_to_stdout(a);
+                IO.write_to_stdout(a);
             "#,
         )?;
         assert_eq!(output, "hello");
@@ -138,7 +152,7 @@ mod test {
             r#"
                 let a = "hi";
                 a = "hello";
-                WASI.write_to_stdout(a);
+                IO.write_to_stdout(a);
             "#,
         )?;
         assert_eq!(output, "hello");
@@ -149,7 +163,7 @@ mod test {
     fn ternary() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout(2 == 3 ? "yes" : "no");
+                IO.write_to_stdout(2 == 3 ? "yes" : "no");
             "#,
         )?;
         assert_eq!(output, "no");
@@ -161,7 +175,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let b = (2 == 2) && (3 != 4) && (1 < 2) && (2<=2) && (3>=3) && (4 > 3);
-                WASI.write_to_stdout(b ? "yes" : "no");
+                IO.write_to_stdout(b ? "yes" : "no");
             "#,
         )?;
         assert_eq!(output, "yes");
@@ -172,7 +186,7 @@ mod test {
     fn arrow_func() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + (() => "test")());
+                IO.write_to_stdout("" + (() => "test")());
             "#,
         )?;
         assert!(output.starts_with("test"));
@@ -183,10 +197,45 @@ mod test {
     fn arrow_func_with_body() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + (() => { 1 + 1; return "test";})());
+                IO.write_to_stdout("" + (() => { 1 + 1; return "test";})());
             "#,
         )?;
         assert!(output.starts_with("test"));
+        Ok(())
+    }
+
+    #[ignore]
+    #[test]
+    fn closure_simple() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let x = "wrong";
+                function a() {
+                    x = "hi";
+                }
+
+                a();
+                IO.write_to_stdout(x);
+            "#,
+        )?;
+        assert!(output.starts_with("hi"));
+        Ok(())
+    }
+
+    #[test]
+    fn closure_obj() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let x = {value: "wrong"};
+                function a() {
+                    x.value = "hi";
+                }
+
+                a();
+                IO.write_to_stdout(x.value);
+            "#,
+        )?;
+        assert!(output.starts_with("hi"));
         Ok(())
     }
 
@@ -198,7 +247,7 @@ mod test {
                     return "test";
                 }
 
-                WASI.write_to_stdout("" + a());
+                IO.write_to_stdout("" + a());
             "#,
         )?;
         assert!(output.starts_with("test"));
@@ -209,7 +258,7 @@ mod test {
     fn full_func() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + (function () { return "test";})());
+                IO.write_to_stdout("" + (function () { return "test";})());
             "#,
         )?;
         assert!(output.starts_with("test"));
@@ -232,7 +281,7 @@ mod test {
                 } else {
                     b = "n";
                 }
-                WASI.write_to_stdout(a + b);
+                IO.write_to_stdout(a + b);
             "#,
         )?;
         assert_eq!(output, "yn");
@@ -242,7 +291,7 @@ mod test {
     fn number_coalesc() -> Result<()> {
         let output = compile_and_run(
             r#"
-                WASI.write_to_stdout("" + 123);
+                IO.write_to_stdout("" + 123);
             "#,
         )?;
         assert!(output.starts_with("123."));
@@ -254,10 +303,24 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = ["a", "b", "c"]
-                WASI.write_to_stdout(v.join(","));
+                IO.write_to_stdout(v.join(","));
             "#,
         )?;
         assert_eq!(output, "a,b,c");
+        Ok(())
+    }
+
+    #[test]
+    fn array_reference() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"]
+                let x = v;
+                x.push("d");
+                IO.write_to_stdout(v.join(","));
+            "#,
+        )?;
+        assert_eq!(output, "a,b,c,d");
         Ok(())
     }
 
@@ -266,7 +329,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = ["a", "b"];
-                WASI.write_to_stdout(v[0] + v[1]);
+                IO.write_to_stdout(v[0] + v[1]);
             "#,
         )?;
         assert_eq!(output, "ab");
@@ -279,7 +342,7 @@ mod test {
             r#"
                 let v = ["a", "b"];
                 v.push("c");
-                WASI.write_to_stdout(v.join(","));
+                IO.write_to_stdout(v.join(","));
             "#,
         )?;
         assert_eq!(output, "a,b,c");
@@ -291,7 +354,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = ["a", "b", "c"];
-                WASI.write_to_stdout(v.map(v => v + "!").join(","));
+                IO.write_to_stdout(v.map(v => v + "!").join(","));
             "#,
         )?;
         assert_eq!(output, "a!,b!,c!");
@@ -303,7 +366,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = [1, 2, 3, 4, 5];
-                WASI.write_to_stdout(v.filter(v => v % 2 == 0).length == 2 ? "yes" : "no");
+                IO.write_to_stdout(v.filter(v => v % 2 == 0).length == 2 ? "yes" : "no");
             "#,
         )?;
         assert_eq!(output, "yes");
@@ -316,10 +379,35 @@ mod test {
             r#"
                 let v = ["a", "b", "c"].reduce((acc, c) => acc + c, "X");
                 let v2 = ["a", "b", "c"].reduce((acc, c) => acc + c);
-                WASI.write_to_stdout(v + v2);
+                IO.write_to_stdout(v + v2);
             "#,
         )?;
         assert_eq!(output, "Xabcabc");
+        Ok(())
+    }
+
+    #[test]
+    fn array_set_length() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"];
+                v.length = 2;
+                IO.write_to_stdout(v.join(","));
+            "#,
+        )?;
+        assert_eq!(output, "a,b");
+        Ok(())
+    }
+
+    #[test]
+    fn array_length() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = ["a", "b", "c"];
+                IO.write_to_stdout(v.length > 2 ? "yes" : "no");
+            "#,
+        )?;
+        assert_eq!(output, "yes");
         Ok(())
     }
 
@@ -328,7 +416,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {a: "v"};
-                WASI.write_to_stdout(v.a);
+                IO.write_to_stdout(v.a);
             "#,
         )?;
         assert_eq!(output, "v");
@@ -340,7 +428,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {a: () => "hi"};
-                WASI.write_to_stdout(v.a());
+                IO.write_to_stdout(v.a());
             "#,
         )?;
         assert_eq!(output, "hi");
@@ -352,7 +440,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {marker: "flag", a: function() { return this.marker; }};
-                WASI.write_to_stdout(v.a());
+                IO.write_to_stdout(v.a());
             "#,
         )?;
         assert_eq!(output, "flag");
@@ -365,7 +453,7 @@ mod test {
             r#"
                 let v = {marker: "flag"};
                 v.marker = "hi";
-                WASI.write_to_stdout(v.marker);
+                IO.write_to_stdout(v.marker);
             "#,
         )?;
         assert_eq!(output, "hi");
@@ -378,7 +466,59 @@ mod test {
             r#"
                 let a = "hi";
                 let v = {a};
-                WASI.write_to_stdout(v.a);
+                IO.write_to_stdout(v.a);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
+    fn object_getter() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let state = "hi";
+                let v = {
+                    get prop() {
+                        return state;
+                    },
+                };
+                IO.write_to_stdout(v.prop);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
+    fn object_setter() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let state = {v: "test"};
+                let v = {
+                    set prop(v) {
+                        state.v = v;
+                    },
+                };
+                v.prop = "hi";
+                IO.write_to_stdout(state.v);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
+    fn object_getter_this() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {
+                    state: "hi",
+                    get prop() {
+                        return this.state;
+                    },
+                };
+                IO.write_to_stdout(v.prop);
             "#,
         )?;
         assert_eq!(output, "hi");
@@ -390,7 +530,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {x: []};
-                WASI.write_to_stdout(JSON.stringify(v));
+                IO.write_to_stdout(JSON.stringify(v));
             "#,
         )?;
         assert_eq!(output, r#"{"x":[]}"#);
@@ -402,7 +542,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = JSON.parse("\"x\n\"");
-                WASI.write_to_stdout(v);
+                IO.write_to_stdout(v);
             "#,
         )?;
         assert_eq!(output, "x\n");
@@ -412,7 +552,12 @@ mod test {
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
-        cpp_to_binary(cpp, &name, vec![])?;
+        cpp_to_binary(
+            cpp,
+            name.clone(),
+            "clang++".to_string(),
+            &Vec::<String>::new(),
+        )?;
         let mut child = Command::new(format!("./{}", &name))
             .stdout(Stdio::piped())
             .spawn()?;

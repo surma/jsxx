@@ -4,4 +4,4 @@
 
 class JSValue;
 
-JSValue create_WASI_global();
+JSValue create_IO_global();

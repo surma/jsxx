@@ -55,7 +55,7 @@ public:
 
   virtual JSValueBinding get_property_slot(JSValue key);
 
-  std::vector<JSValueBinding> internal;
+  shared_ptr<std::vector<JSValueBinding>> internal;
 
   static JSValue push_impl(JSValue thisArg, std::vector<JSValue> &args);
   static JSValue map_impl(JSValue thisArg, std::vector<JSValue> &args);
@@ -68,10 +68,11 @@ class JSObject : public JSBase {
 public:
   JSObject();
   JSObject(std::vector<std::pair<JSValue, JSValue>> data);
+  JSObject(std::vector<std::pair<JSValue, JSValueBinding>> data);
 
   virtual JSValueBinding get_property_slot(JSValue key);
 
-  std::vector<std::pair<JSValue, JSValueBinding>> internal;
+  shared_ptr<std::vector<std::pair<JSValue, JSValueBinding>>> internal;
 };
 
 using ExternFunc = std::function<JSValue(JSValue, std::vector<JSValue> &)>;
