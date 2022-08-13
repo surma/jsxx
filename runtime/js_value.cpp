@@ -5,12 +5,6 @@ JSValue::JSValue()
     : internal{new Box{std::in_place_index<JSValueType::UNDEFINED>,
                        JSUndefined{}}} {};
 
-JSValue::JSValue(const JSValue &v)
-    : internal{new Box{*v.internal}}, parent_value{v.parent_value} {};
-
-JSValue::JSValue(const JSValue *v)
-    : internal{new Box{*v->internal}}, parent_value{v->parent_value} {};
-
 JSValue::JSValue(bool v)
     : internal{new Box{std::in_place_index<JSValueType::BOOL>, JSBool{v}}},
       parent_value{} {};
@@ -56,7 +50,10 @@ JSValue::JSValue(JSArray v)
 JSValue::JSValue(JSValueBinding v)
     : internal{new Box{*v.get().internal}}, parent_value{} {};
 
+JSValue::JSValue(Box v) : internal{new Box{v}}, parent_value{} {};
+
 JSValue JSValue::undefined() { return JSValue{}; }
+
 JSValue
 JSValue::new_object(std::vector<std::pair<JSValue, JSValueBinding>> pairs) {
   return JSValue{JSObject{pairs}};
@@ -106,8 +103,8 @@ JSValue JSValue::operator--(int) {
   return prev;
 }
 
-JSValue JSValue::operator=(JSValue other) {
-  this->internal = unique_ptr<JSValue::Box>{new JSValue::Box{*other.internal}};
+JSValue JSValue::operator=(const Box &other) {
+  *this->internal = other;
   return other;
 }
 

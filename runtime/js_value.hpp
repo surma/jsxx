@@ -52,12 +52,10 @@ public:
   JSValue(JSFunction v);
   JSValue(JSObject v);
   JSValue(JSArray v);
-  JSValue(const JSValue *v);
-  JSValue(const JSValue &v);
   JSValue(JSValueBinding v);
+  JSValue(Box v);
 
-  JSValue operator=(JSValue other);
-  // JSValue& operator=(JSValue& other);
+  JSValue operator=(const Box &other);
   JSValue &operator++();   // Prefix
   JSValue operator++(int); // Postfix
   JSValue &operator--();   // Prefix
@@ -96,6 +94,6 @@ public:
   bool is_undefined() const;
   double &get_number();
 
-  unique_ptr<Box> internal;
+  shared_ptr<Box> internal;
   optional<shared_ptr<JSValue>> parent_value;
 };

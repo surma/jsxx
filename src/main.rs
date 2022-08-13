@@ -173,6 +173,50 @@ mod test {
     }
 
     #[test]
+    fn copy_behavior_string() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a = "hello";
+                let b = a;
+                b = b + "!";
+                IO.write_to_stdout(a + b);
+            "#,
+        )?;
+        assert_eq!(output, "hellohello!");
+        Ok(())
+    }
+
+    #[test]
+    fn copy_behavior_number() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a = 1.0;
+                let b = a;
+                b = 3;
+                IO.write_to_stdout(((a + b) == 4) ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
+    fn copy_behavior_functions() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a = "x";
+                function f(v) {
+                    v = v + "!";
+                }
+                f(a);
+                IO.write_to_stdout(a);
+            "#,
+        )?;
+        assert_eq!(output, "x");
+        Ok(())
+    }
+
+    #[test]
     fn variable_assign() -> Result<()> {
         let output = compile_and_run(
             r#"
@@ -230,7 +274,6 @@ mod test {
         Ok(())
     }
 
-    #[ignore]
     #[test]
     fn closure_simple() -> Result<()> {
         let output = compile_and_run(
@@ -244,7 +287,7 @@ mod test {
                 IO.write_to_stdout(x);
             "#,
         )?;
-        assert!(output.starts_with("hi"));
+        assert_eq!(output, "hi");
         Ok(())
     }
 
