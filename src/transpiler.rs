@@ -86,7 +86,42 @@ impl Transpiler {
             Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt),
             Stmt::If(if_stmt) => self.transpile_if_stmt(if_stmt),
             Stmt::For(for_stmt) => self.transpile_for_stmt(for_stmt),
-            _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
+            Stmt::ForOf(for_of_stmt) => self.transpile_for_of_stmt(for_of_stmt),
+            _ => return Err(anyhow!("Unsupported statement: {:?}", stmt)),
+        }
+    }
+
+    fn transpile_for_of_stmt(&mut self, for_of_stmt: &ForOfStmt) -> Result<String> {
+        let left = self.transpile_var_decl_or_pat(&for_of_stmt.left)?;
+        let right = self.transpile_expr(&for_of_stmt.right)?;
+        let body = self.transpile_stmt(for_of_stmt.body.as_ref())?;
+
+        Ok(format!(
+            r#"
+                for({left} : {right}) {{
+                    {body}
+                }}
+            "#,
+            left = left,
+            right = right,
+            body = body,
+        ))
+    }
+
+    fn transpile_var_decl_or_pat(&mut self, var_decl_or_pat: &VarDeclOrPat) -> Result<String> {
+        match var_decl_or_pat {
+            VarDeclOrPat::VarDecl(var_decl) => self.transpile_var_decl(var_decl),
+            VarDeclOrPat::Pat(pat) => match pat {
+                Pat::Ident(ident) => Ok(format!("{}", ident.sym)),
+                _ => Err(anyhow!("Unsupported for-of expr {:?}", pat)),
+            },
+        }
+    }
+
+    fn transpile_var_decl_or_expr(&mut self, var_decl_or_expr: &VarDeclOrExpr) -> Result<String> {
+        match var_decl_or_expr {
+            VarDeclOrExpr::Expr(expr) => self.transpile_expr(expr),
+            VarDeclOrExpr::VarDecl(var_decl) => self.transpile_var_decl(var_decl),
         }
     }
 
@@ -94,10 +129,7 @@ impl Transpiler {
         let init = for_stmt
             .init
             .as_ref()
-            .map(|var_decl_or_expr| match var_decl_or_expr {
-                VarDeclOrExpr::Expr(expr) => self.transpile_expr(expr),
-                VarDeclOrExpr::VarDecl(var_decl) => self.transpile_var_decl(var_decl),
-            })
+            .map(|var_decl_or_expr| self.transpile_var_decl_or_expr(var_decl_or_expr))
             .transpose()?
             .unwrap_or("".to_string());
 
@@ -449,7 +481,6 @@ impl Transpiler {
         let body = match &arrow_expr.body {
             BlockStmtOrExpr::Expr(expr) => format!("return {};", self.transpile_expr(expr)?),
             BlockStmtOrExpr::BlockStmt(block_stmt) => self.transpile_block_stmt(block_stmt)?,
-            _ => return Err(anyhow!("Unsupported body {:?}", arrow_expr.body)),
         };
         Ok(format!(
             "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{

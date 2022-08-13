@@ -60,7 +60,6 @@ fn cpp_to_binary(
     let cpp_file_name = format!("./{}.cpp", outputname);
     let mut tempfile = File::create(&cpp_file_name)?;
     tempfile.write_all(code.as_bytes())?;
-    tempfile.flush();
     drop(tempfile);
 
     let args = flags
@@ -103,7 +102,7 @@ fn main() -> Result<()> {
     let cpp_code = js_to_cpp(&input)?;
 
     if args.emit_cpp {
-        let (status, stdout, stderr) =
+        let (_status, stdout, _stderr) =
             command_utils::pipe_through_shell::<String>("clang-format", &[], cpp_code.as_bytes())?;
         println!("{}", String::from_utf8(stdout)?);
     } else {
@@ -590,6 +589,22 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn for_of_loop() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let values = [1, 2, 3];
+                let sum = 0;
+                for(let value of values) {
+                    sum = sum + value;
+                }
+                IO.write_to_stdout(sum == 6 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
@@ -599,7 +614,7 @@ mod test {
             "clang++".to_string(),
             &Vec::<String>::new(),
         )?;
-        let mut child = Command::new(format!("./{}", &name))
+        let child = Command::new(format!("./{}", &name))
             .stdout(Stdio::piped())
             .spawn()?;
         let output = child.wait_with_output()?;
