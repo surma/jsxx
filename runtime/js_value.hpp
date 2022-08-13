@@ -58,6 +58,10 @@ public:
 
   JSValue operator=(JSValue other);
   // JSValue& operator=(JSValue& other);
+  JSValue &operator++();   // Prefix
+  JSValue operator++(int); // Postfix
+  JSValue &operator--();   // Prefix
+  JSValue operator--(int); // Postfix
   JSValue operator==(const JSValue other);
   JSValue operator!();
   JSValue operator<(const JSValue other);
@@ -90,6 +94,7 @@ public:
   bool coerce_to_bool() const;
 
   bool is_undefined() const;
+  double &get_number();
 
   unique_ptr<Box> internal;
   optional<shared_ptr<JSValue>> parent_value;

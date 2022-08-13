@@ -124,6 +124,32 @@ mod test {
     use uuid::Uuid;
 
     #[test]
+    fn increment_postfix() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a = 1;
+                let b = a++;
+                IO.write_to_stdout((a+b) < 4 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
+    fn increment_prefix() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let a = 1;
+                let b = ++a;
+                IO.write_to_stdout((a+b) >= 4 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
     fn basic_program() -> Result<()> {
         let output = compile_and_run(
             r#"
@@ -546,6 +572,21 @@ mod test {
             "#,
         )?;
         assert_eq!(output, "x\n");
+        Ok(())
+    }
+
+    #[test]
+    fn for_loop() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = [];
+                for(let i = 0; i < 4; i++) {
+                    v.push(i)
+                }
+                IO.write_to_stdout(v.length == 4 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
         Ok(())
     }
 

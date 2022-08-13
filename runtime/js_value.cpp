@@ -68,6 +68,44 @@ JSValue JSValue::new_array(std::vector<JSValue> values) {
 
 JSValue JSValue::new_function(ExternFunc f) { return JSValue{JSFunction{f}}; }
 
+JSValue &JSValue::operator++() {
+  if (this->type() != JSValueType::NUMBER) {
+    *this = JSValue::undefined();
+    return *this;
+  }
+  this->get_number() = this->get_number() + 1.0;
+  return *this;
+}
+
+JSValue JSValue::operator++(int) {
+  if (this->type() != JSValueType::NUMBER) {
+    *this = JSValue::undefined();
+    return JSValue::undefined();
+  }
+  JSValue prev{this->get_number()};
+  this->get_number() = this->get_number() + 1.0;
+  return prev;
+}
+
+JSValue &JSValue::operator--() {
+  if (this->type() != JSValueType::NUMBER) {
+    *this = JSValue::undefined();
+    return *this;
+  }
+  this->get_number() = this->get_number() - 1.0;
+  return *this;
+}
+
+JSValue JSValue::operator--(int) {
+  if (this->type() != JSValueType::NUMBER) {
+    *this = JSValue::undefined();
+    return JSValue::undefined();
+  }
+  JSValue prev{this->get_number()};
+  this->get_number() = this->get_number() - 1.0;
+  return prev;
+}
+
 JSValue JSValue::operator=(JSValue other) {
   this->internal = unique_ptr<JSValue::Box>{new JSValue::Box{*other.internal}};
   return other;
@@ -225,6 +263,10 @@ double JSValue::coerce_to_double() const {
   default:
     return NAN;
   }
+}
+
+double &JSValue::get_number() {
+  return std::get<JSValueType::NUMBER>(*this->internal).internal;
 }
 
 std::string JSValue::coerce_to_string() const {

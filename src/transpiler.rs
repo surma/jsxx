@@ -74,7 +74,7 @@ impl Transpiler {
             additional_includes = additional_includes,
             inits = inits,
             global_exprs = global_exprs,
-            program = Result::<Vec<String>>::from_iter(transpiled_items)?.join("\n")
+            program = Result::<Vec<String>>::from_iter(transpiled_items)?.join(";\n")
         ))
     }
 
@@ -85,8 +85,49 @@ impl Transpiler {
             Stmt::Block(block_stmt) => self.transpile_block_stmt(block_stmt),
             Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt),
             Stmt::If(if_stmt) => self.transpile_if_stmt(if_stmt),
+            Stmt::For(for_stmt) => self.transpile_for_stmt(for_stmt),
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
         }
+    }
+
+    fn transpile_for_stmt(&mut self, for_stmt: &ForStmt) -> Result<String> {
+        let init = for_stmt
+            .init
+            .as_ref()
+            .map(|var_decl_or_expr| match var_decl_or_expr {
+                VarDeclOrExpr::Expr(expr) => self.transpile_expr(expr),
+                VarDeclOrExpr::VarDecl(var_decl) => self.transpile_var_decl(var_decl),
+            })
+            .transpose()?
+            .unwrap_or("".to_string());
+
+        let test = for_stmt
+            .test
+            .as_ref()
+            .map(|expr| self.transpile_expr(expr))
+            .transpose()?
+            .unwrap_or("".to_string());
+
+        let update = for_stmt
+            .update
+            .as_ref()
+            .map(|expr| self.transpile_expr(expr))
+            .transpose()?
+            .unwrap_or("".to_string());
+
+        let body = self.transpile_stmt(for_stmt.body.as_ref())?;
+
+        Ok(format!(
+            r#"
+                for({init};({test}).coerce_to_bool();{update}) {{
+                    {body}
+                }}
+            "#,
+            init = init,
+            test = test,
+            update = update,
+            body = body,
+        ))
     }
 
     fn transpile_if_stmt(&mut self, if_stmt: &IfStmt) -> Result<String> {
@@ -136,12 +177,10 @@ impl Transpiler {
         if var_decl.kind != VarDeclKind::Let {
             return Err(anyhow!("Only `let` variable declarations are supported."));
         }
-        let transpiled_var_decl: Vec<Result<String>> = var_decl
-            .decls
-            .iter()
-            .map(|decl| self.transpile_var_declarator(decl))
-            .collect();
-        Ok(Result::<Vec<String>>::from_iter(transpiled_var_decl)?.join("\n"))
+        if var_decl.decls.len() > 1 {
+            return Err(anyhow!("Only single-variable let statements for now"));
+        }
+        self.transpile_var_declarator(&var_decl.decls[0])
     }
 
     fn transpile_var_declarator(&mut self, var_decl: &VarDeclarator) -> Result<String> {
@@ -153,7 +192,7 @@ impl Transpiler {
             .as_ref()
             .map(|init| -> Result<String> { Ok(format!(" = {}", self.transpile_expr(&init)?)) })
             .unwrap_or(Ok("".to_string()))?;
-        Ok(format!("JSValue {}{};", ident.sym, init))
+        Ok(format!("JSValue {}{}", ident.sym, init))
     }
 
     fn transpile_expr(&mut self, expr: &Expr) -> Result<String> {
@@ -173,8 +212,21 @@ impl Transpiler {
             Expr::This(this_expr) => self.transpile_this_expr(this_expr),
             Expr::Assign(assign_expr) => self.transpile_assign_expr(assign_expr),
             Expr::Cond(cond_expr) => self.transpile_cond_expr(cond_expr),
+            Expr::Update(update_expr) => self.transpile_update_expr(update_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
+    }
+
+    fn transpile_update_expr(&mut self, update_expr: &UpdateExpr) -> Result<String> {
+        let expr = self.transpile_expr(update_expr.arg.as_ref())?;
+        let op = match update_expr.op {
+            UpdateOp::MinusMinus => "--",
+            UpdateOp::PlusPlus => "++",
+        };
+        Ok(match update_expr.prefix {
+            true => format!("{}({})", op, expr),
+            false => format!("({}){}", expr, op),
+        })
     }
 
     fn transpile_cond_expr(&mut self, cond_expr: &CondExpr) -> Result<String> {
