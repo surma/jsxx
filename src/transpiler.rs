@@ -86,8 +86,15 @@ impl Transpiler {
             Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt),
             Stmt::If(if_stmt) => self.transpile_if_stmt(if_stmt),
             Stmt::For(for_stmt) => self.transpile_for_stmt(for_stmt),
+            Stmt::While(while_stmt) => self.transpile_while_stmt(while_stmt),
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
         }
+    }
+
+    fn transpile_while_stmt(&mut self, while_stmt: &WhileStmt) -> Result<String> {
+        let test = self.transpile_expr(&while_stmt.test)?;
+        let body = self.transpile_stmt(&while_stmt.body)?;
+        Ok(format!("while(({}).coerce_to_bool()) {{ {} }}", test, body))
     }
 
     fn transpile_for_stmt(&mut self, for_stmt: &ForStmt) -> Result<String> {
@@ -528,10 +535,18 @@ impl Transpiler {
         match lit {
             Lit::Num(num) => self.transpile_number(num),
             Lit::Str(str) => self.transpile_string(str),
+            Lit::Bool(bool) => self.transpile_bool(bool),
             _ => Err(anyhow!("Unsupported literal {:?}", lit)),
         }
     }
 
+    fn transpile_bool(&mut self, bool: &Bool) -> Result<String> {
+        Ok(match bool.value {
+            true => "true",
+            false => "false",
+        }
+        .to_string())
+    }
     fn transpile_string(&mut self, string: &Str) -> Result<String> {
         Ok(format!(
             r#"JSValue{{"{}"}}"#,

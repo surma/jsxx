@@ -666,6 +666,23 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn while_loop() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = [];
+                let i = 0;
+                while(i < 4) {
+                    v.push("a")
+                    i = i + 1;
+                }
+                IO.write_to_stdout(v.join(""));
+            "#,
+        )?;
+        assert_eq!(output, "aaaa");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
@@ -675,7 +692,7 @@ mod test {
             "clang++".to_string(),
             &Vec::<String>::new(),
         )?;
-        let mut child = Command::new(format!("./{}", &name))
+        let child = Command::new(format!("./{}", &name))
             .stdout(Stdio::piped())
             .spawn()?;
         let output = child.wait_with_output()?;
