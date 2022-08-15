@@ -505,6 +505,18 @@ mod test {
     }
 
     #[test]
+    fn object_func_prop() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {a() { return "hi"; }};
+                IO.write_to_stdout(v.a());
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
     fn object_func_this() -> Result<()> {
         let output = compile_and_run(
             r#"

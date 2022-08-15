@@ -302,12 +302,24 @@ impl Transpiler {
                     Prop::KeyValue(key_value) => self.transpile_prop_keyvalue(key_value),
                     Prop::Getter(getter) => self.transpile_prop_getter(getter),
                     Prop::Setter(setter) => self.transpile_prop_setter(setter),
+                    Prop::Method(method) => self.transpile_prop_method(method),
                     _ => Err(anyhow!("Unsupported object property {:?}", prop)),
                 },
             })
             .collect();
         let prop_defs = Result::<Vec<String>>::from_iter(transpiled_props)?.join(",\n");
         Ok(format!("JSValue::new_object({{ {} }})", prop_defs))
+    }
+
+    fn transpile_prop_method(&mut self, method: &MethodProp) -> Result<String> {
+        Ok(format!(
+            r#"{{
+                {},
+                JSValueBinding::with_value({})
+            }}"#,
+            self.transpile_prop_name(&method.key)?,
+            self.transpile_function(&method.function)?
+        ))
     }
 
     fn transpile_prop_setter(&mut self, setter: &SetterProp) -> Result<String> {
