@@ -683,6 +683,24 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn while_loop_break() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = [];
+                let i = 0;
+                while(true) {
+                    v.push("a")
+                    i = i + 1;
+                    if(i >= 4) break;
+                }
+                IO.write_to_stdout(v.join(""));
+            "#,
+        )?;
+        assert_eq!(output, "aaaa");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;

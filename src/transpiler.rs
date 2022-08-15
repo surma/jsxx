@@ -79,16 +79,22 @@ impl Transpiler {
     }
 
     fn transpile_stmt(&mut self, stmt: &Stmt) -> Result<String> {
-        match stmt {
-            Stmt::Decl(decl) => self.transpile_decl(decl),
-            Stmt::Expr(expr_stmt) => Ok(format!("{};", self.transpile_expr(&expr_stmt.expr)?)),
-            Stmt::Block(block_stmt) => self.transpile_block_stmt(block_stmt),
-            Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt),
-            Stmt::If(if_stmt) => self.transpile_if_stmt(if_stmt),
-            Stmt::For(for_stmt) => self.transpile_for_stmt(for_stmt),
-            Stmt::While(while_stmt) => self.transpile_while_stmt(while_stmt),
+        let transpiled_stmt = match stmt {
+            Stmt::Decl(decl) => self.transpile_decl(decl)?,
+            Stmt::Expr(expr_stmt) => self.transpile_expr(&expr_stmt.expr)?,
+            Stmt::Block(block_stmt) => self.transpile_block_stmt(block_stmt)?,
+            Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt)?,
+            Stmt::If(if_stmt) => self.transpile_if_stmt(if_stmt)?,
+            Stmt::For(for_stmt) => self.transpile_for_stmt(for_stmt)?,
+            Stmt::While(while_stmt) => self.transpile_while_stmt(while_stmt)?,
+            Stmt::Break(break_stmt) => self.transpile_break_stmt(break_stmt)?,
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
-        }
+        };
+        Ok(format!("{};", transpiled_stmt))
+    }
+
+    fn transpile_break_stmt(&mut self, break_stmt: &BreakStmt) -> Result<String> {
+        Ok(format!("break"))
     }
 
     fn transpile_while_stmt(&mut self, while_stmt: &WhileStmt) -> Result<String> {
@@ -541,11 +547,12 @@ impl Transpiler {
     }
 
     fn transpile_bool(&mut self, bool: &Bool) -> Result<String> {
-        Ok(match bool.value {
+        let bool_str = match bool.value {
             true => "true",
             false => "false",
-        }
-        .to_string())
+        };
+
+        Ok(format!("JSValue{{{}}}", bool_str))
     }
     fn transpile_string(&mut self, string: &Str) -> Result<String> {
         Ok(format!(
