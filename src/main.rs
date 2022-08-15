@@ -595,6 +595,27 @@ mod test {
     }
 
     #[test]
+    fn object_equality() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {};
+                let v2 = {};
+                let c = 0;
+                if(v == v) {
+                    c = c+1;
+                }
+                if(v == v2) {
+                    c = c+2;
+                }
+
+                IO.write_to_stdout("" + c);
+            "#,
+        )?;
+        assert_eq!(&output[0..2], "1.");
+        Ok(())
+    }
+
+    #[test]
     fn json_stringify_array() -> Result<()> {
         let output = compile_and_run(
             r#"

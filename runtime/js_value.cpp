@@ -123,6 +123,14 @@ JSValue JSValue::operator==(const JSValue other) {
     return JSValue{std::get<JSValueType::BOOL>(*this->internal).internal ==
                    other.coerce_to_bool()};
   }
+  if (this->type() == JSValueType::ARRAY) {
+    return JSValue{std::get<JSValueType::ARRAY>(*this->internal).get() ==
+                   std::get<JSValueType::ARRAY>(*other.internal).get()};
+  }
+  if (this->type() == JSValueType::OBJECT) {
+    return JSValue{std::get<JSValueType::OBJECT>(*this->internal).get() ==
+                   std::get<JSValueType::OBJECT>(*other.internal).get()};
+  }
   return JSValue{"Equality not implemented for this type yet"};
 }
 
