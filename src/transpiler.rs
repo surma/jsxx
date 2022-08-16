@@ -401,6 +401,7 @@ impl Transpiler {
                     .unwrap_or(format!("{}", str.value));
                 Ok(format!(r#""{}""#, v))
             }
+            PropName::Computed(computed_prop_name) => self.transpile_expr(&computed_prop_name.expr),
             _ => Err(anyhow!("Unsupported property name {:?}", prop_name)),
         }
     }

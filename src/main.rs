@@ -628,6 +628,22 @@ mod test {
     }
 
     #[test]
+    fn object_computed() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let k = "abc";
+                let v = {
+                    [k]: "hi",
+                    ["x"+"y"]: "hi2"
+                };
+                IO.write_to_stdout(v.abc + v.xy);
+            "#,
+        )?;
+        assert_eq!(output, "hihi2");
+        Ok(())
+    }
+
+    #[test]
     fn json_stringify_array() -> Result<()> {
         let output = compile_and_run(
             r#"
