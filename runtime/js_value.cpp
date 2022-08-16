@@ -212,6 +212,10 @@ JSValue JSValue::operator()(std::vector<JSValue> args) {
   return this->apply(*this_arg_ptr, args);
 }
 
+JSIterator JSValue::begin() { return JSIterator{(*this)["iterator"]({})}; }
+
+JSIterator JSValue::end() { return JSIterator::end_marker(); }
+
 JSValue JSValue::get_property(const JSValue key) {
   return this->get_property_slot(key).get();
 }
@@ -327,4 +331,52 @@ JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
   }
   JSFunction f = std::get<JSValueType::FUNCTION>(*this->internal);
   return f.call(thisArg, args);
+}
+
+JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}
+
+JSIterator::JSIterator(JSValue val) {
+  this->it = shared_ptr<JSValue>{new JSValue{val}};
+}
+
+JSIterator JSIterator::end_marker() {
+  JSIterator it{};
+  it.last_value =
+      std::optional{shared_ptr<JSValue>{new JSValue{JSValue::new_object({
+          {JSValue{"value"}, JSValueBinding::with_value(JSValue::undefined())},
+          {JSValue{"done"}, JSValueBinding::with_value(JSValue{true})},
+      })}}};
+  return it;
+}
+
+JSValue JSIterator::operator*() { return this->value()["value"]; }
+
+JSIterator JSIterator::operator++() {
+  if (!this->it->is_undefined()) {
+    this->last_value = std::optional{
+        shared_ptr<JSValue>{new JSValue{(*this->it)["next"]({})}}};
+  }
+  return *this;
+}
+
+bool JSIterator::operator!=(const JSIterator &other) {
+  if (other.last_value.has_value() != this->last_value.has_value()) {
+    return true;
+  }
+  JSValue left = *this->last_value.value();
+  JSValue right = *other.last_value.value();
+  bool left_done = left["done"].coerce_to_bool();
+  bool right_done = right["done"].coerce_to_bool();
+  if (left_done && right_done) {
+    return false;
+  }
+  return left_done != right_done ||
+         (left["value"] != right["value"]).coerce_to_bool();
+}
+
+JSValue JSIterator::value() {
+  if (!this->last_value.has_value()) {
+    ++(*this);
+  }
+  return *this->last_value.value();
 }

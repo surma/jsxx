@@ -86,11 +86,33 @@ impl Transpiler {
             Stmt::Return(return_stmt) => self.transpile_return_stmt(return_stmt)?,
             Stmt::If(if_stmt) => self.transpile_if_stmt(if_stmt)?,
             Stmt::For(for_stmt) => self.transpile_for_stmt(for_stmt)?,
+            Stmt::ForOf(for_of_stmt) => self.transpile_for_of_stmt(for_of_stmt)?,
             Stmt::While(while_stmt) => self.transpile_while_stmt(while_stmt)?,
             Stmt::Break(break_stmt) => self.transpile_break_stmt(break_stmt)?,
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
         };
         Ok(format!("{};", transpiled_stmt))
+    }
+
+    fn transpile_for_of_stmt(&mut self, for_of_stmt: &ForOfStmt) -> Result<String> {
+        let left = match &for_of_stmt.left {
+            VarDeclOrPat::VarDecl(var_decl) => self.transpile_var_decl(&var_decl)?,
+            _ => return Err(anyhow!("Only simple variables are supported in for-of")),
+        };
+
+        let right = self.transpile_expr(&for_of_stmt.right)?;
+        let body = self.transpile_stmt(&for_of_stmt.body)?;
+
+        Ok(format!(
+            r#"
+                for({left} : {right}) {{
+                    {body}
+                }}
+            "#,
+            left = left,
+            right = right,
+            body = body,
+        ))
     }
 
     fn transpile_break_stmt(&mut self, break_stmt: &BreakStmt) -> Result<String> {

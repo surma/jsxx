@@ -717,6 +717,37 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn iterator() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let it = {
+                    iterator() {
+                        return this;
+                    },
+                    i: 0,
+                    next() {
+                        if(this.i > 4) {
+                            return {done: true};
+                        }
+                        return {
+                            value: this.i++,
+                            done: false
+                        };
+                    }
+                };
+                let arr = [];
+                for(let v of it) {
+                    arr.push(v)
+                }
+                let sum = arr.reduce((sum, c) => sum +c, 0);
+                IO.write_to_stdout(sum == 10 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
