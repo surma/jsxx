@@ -5,7 +5,6 @@ use swc_ecma_ast::*;
 
 pub struct Transpiler {
     pub globals: Vec<crate::globals::Global>,
-    is_lhs: bool,
     is_generator: bool,
 }
 
@@ -13,7 +12,6 @@ impl Transpiler {
     pub fn new() -> Transpiler {
         Transpiler {
             globals: vec![],
-            is_lhs: false,
             is_generator: false,
         }
     }
@@ -299,7 +297,6 @@ impl Transpiler {
     }
 
     fn transpile_assign_expr(&mut self, assign_expr: &AssignExpr) -> Result<String> {
-        self.is_lhs = true;
         let left = match &assign_expr.left {
             PatOrExpr::Expr(expr) => self.transpile_expr(expr)?,
             PatOrExpr::Pat(pat) => match pat.as_ref() {
@@ -313,7 +310,6 @@ impl Transpiler {
                 }
             },
         };
-        self.is_lhs = false;
         let right = self.transpile_expr(&assign_expr.right)?;
         let op = match assign_expr.op {
             AssignOp::Assign => "=",
