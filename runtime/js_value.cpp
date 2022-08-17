@@ -135,7 +135,7 @@ JSValue JSValue::operator=(const Box &other) {
 
 JSValue JSValue::operator!() { return JSValue{!this->coerce_to_bool()}; }
 
-JSValue JSValue::operator==(const JSValue other) {
+JSValue JSValue::operator==(const JSValue other) const {
   if (this->type() == JSValueType::NUMBER) {
     return JSValue{std::get<JSValueType::NUMBER>(*this->value).internal ==
                    other.coerce_to_double()};
@@ -164,9 +164,11 @@ JSValue JSValue::operator==(const JSValue other) {
 }
 
 JSValue JSValue::operator<(const JSValue other) {
-  if (this->type() == JSValueType::NUMBER) {
-    return JSValue{std::get<JSValueType::NUMBER>(*this->value).internal <
-                   other.coerce_to_double()};
+  JSValue v1{this->boxed_value()};
+  JSValue v2{other.boxed_value()};
+  if (v1.type() == JSValueType::NUMBER) {
+    return JSValue{std::get<JSValueType::NUMBER>(*v1.value).internal <
+                   v2.coerce_to_double()};
   }
   return JSValue{false};
 }
@@ -224,7 +226,7 @@ JSValue JSValue::operator%(JSValue other) {
 }
 
 JSValue JSValue::operator[](const JSValue key) {
-  return this->get_property(key);
+  return this->get_property(key, *this);
 }
 
 JSValue JSValue::operator[](const char *index) {
@@ -245,32 +247,35 @@ JSIterator JSValue::begin() { return JSIterator{(*this)[iterator_symbol]({})}; }
 
 JSIterator JSValue::end() { return JSIterator::end_marker(); }
 
-JSValue JSValue::get_property(const JSValue key) {
+JSValue JSValue::get_property(const JSValue key, JSValue parent) {
   JSValue v;
   switch (this->type()) {
   case JSValueType::UNDEFINED:
     v = JSValue::undefined();
     break;
   case JSValueType::BOOL:
-    v = std::get<JSValueType::BOOL>(*this->value).get_property(key);
+    v = std::get<JSValueType::BOOL>(*this->value).get_property(key, parent);
     break;
   case JSValueType::NUMBER:
-    v = std::get<JSValueType::NUMBER>(*this->value).get_property(key);
+    v = std::get<JSValueType::NUMBER>(*this->value).get_property(key, parent);
     break;
   case JSValueType::STRING:
-    v = std::get<JSValueType::STRING>(*this->value).get_property(key);
+    v = std::get<JSValueType::STRING>(*this->value).get_property(key, parent);
     break;
   case JSValueType::ARRAY:
-    v = std::get<JSValueType::ARRAY>(*this->value)->get_property(key);
+    v = std::get<JSValueType::ARRAY>(*this->value)->get_property(key, parent);
     break;
   case JSValueType::OBJECT:
-    v = std::get<JSValueType::OBJECT>(*this->value)->get_property(key);
+
+    v = std::get<JSValueType::OBJECT>(*this->value)->get_property(key, parent);
     break;
   case JSValueType::FUNCTION:
-    v = std::get<JSValueType::FUNCTION>(*this->value).get_property(key);
+    v = std::get<JSValueType::FUNCTION>(*this->value).get_property(key, parent);
     break;
+  // TODO remove me?!
   case JSValueType::EXCEPTION:
-    v = std::get<JSValueType::EXCEPTION>(*this->value)->get_property(key);
+    v = std::get<JSValueType::EXCEPTION>(*this->value)
+            ->get_property(key, parent);
     break;
   };
   v.set_parent(*this);
@@ -284,14 +289,14 @@ JSValue JSValue::with_getter_setter(JSValue getter, JSValue setter) {
       return JSValue::undefined();
     auto f = std::get<JSValueType::FUNCTION>(*getter.value);
     std::vector<JSValue> params{};
-    return f.call(v.get_parent(), params);
+    return f.call(v, params);
   }};
   b.setter = std::optional{[=](JSValue v, JSValue new_v) -> JSValue {
     if (setter.type() != JSValueType::FUNCTION)
       return JSValue::undefined();
     auto f = std::get<JSValueType::FUNCTION>(*setter.value);
     std::vector<JSValue> params{new_v};
-    return f.call(v.get_parent(), params);
+    return f.call(v, params);
   }};
   return b;
 }
@@ -384,12 +389,7 @@ JSValue JSValue::get_parent() {
       std::make_shared<JSValue>(JSValue::undefined()));
 }
 
-const JSValue::Box &JSValue::boxed_value() const {
-  if (this->getter.has_value()) {
-    return (*this->getter)(*this).boxed_value();
-  }
-  return *this->value;
-}
+const JSValue::Box &JSValue::boxed_value() const { return *this->value; }
 
 JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}
 

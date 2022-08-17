@@ -6,15 +6,26 @@ JSValue JSUndefined::operator==(JSValue &other) {
   return JSValue{other.is_undefined()};
 }
 
-JSValue JSBase::get_property(JSValue key) {
-  auto obj = std::find_if(this->properties.begin(), this->properties.end(),
-                          [&](std::pair<JSValue, JSValue> &item) -> bool {
+JSValue JSBase::get_property(JSValue key, JSValue parent) {
+  return this->get_property_from_list(this->properties, key, parent)
+      .value_or(JSValue::undefined);
+}
+
+std::optional<JSValue> JSBase::get_property_from_list(
+    const std::vector<std::pair<JSValue, JSValue>> &list, JSValue key,
+    JSValue parent) {
+  auto obj = std::find_if(list.begin(), list.end(),
+                          [&](const std::pair<JSValue, JSValue> &item) -> bool {
                             return (item.first == key).coerce_to_bool();
                           });
-  if (obj == this->properties.end()) {
-    return JSValue::undefined();
+  if (obj == list.end()) {
+    return std::nullopt;
   }
-  return (*obj).second;
+  JSValue v = (*obj).second;
+  if (v.getter.has_value()) {
+    *v.value = (*v.getter)(parent).boxed_value();
+  }
+  return std::optional{v};
 }
 
 JSBool::JSBool(bool v) : JSBase(), internal{v} {};
@@ -146,14 +157,14 @@ JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {
   return JSValue{result};
 }
 
-JSValue JSArray::get_property(const JSValue key) {
+JSValue JSArray::get_property(const JSValue key, JSValue parent) {
   if (key.type() == JSValueType::NUMBER) {
     auto idx = static_cast<size_t>(key.coerce_to_double());
     if (idx >= this->internal->size())
       return JSValue::undefined();
     return (*this->internal)[idx];
   }
-  return JSBase::get_property(key);
+  return JSBase::get_property(key, parent);
 }
 
 JSObject::JSObject()
@@ -163,15 +174,12 @@ JSObject::JSObject(std::vector<std::pair<JSValue, JSValue>> data) : JSObject() {
   *this->internal = data;
 };
 
-JSValue JSObject::get_property(const JSValue key) {
-  auto obj = std::find_if(this->internal->begin(), this->internal->end(),
-                          [=](std::pair<JSValue, JSValue> &item) {
-                            return (item.first == key).coerce_to_bool();
-                          });
-  if (obj == this->internal->end()) {
-    return JSBase::get_property(key);
+JSValue JSObject::get_property(const JSValue key, JSValue parent) {
+  auto v = this->get_property_from_list(*this->internal, key, parent);
+  if (v.has_value()) {
+    return v.value();
   }
-  return (*obj).second;
+  return JSBase::get_property(key, parent);
 }
 
 JSFunction::JSFunction(ExternFunc f) : JSBase(), internal{f} {};

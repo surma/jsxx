@@ -567,11 +567,7 @@ impl Transpiler {
             }
             _ => return Err(anyhow!("Unsupported member prop {:?}", member_expr.prop)),
         };
-        // Ok(if self.is_lhs {
-        //     format!(r#"{}.get_property({})"#, obj, prop)
-        // } else {
         Ok(format!(r#"{}[{}]"#, obj, prop))
-        // })
     }
 
     fn transpile_call_expr(&mut self, call_expr: &CallExpr) -> Result<String> {

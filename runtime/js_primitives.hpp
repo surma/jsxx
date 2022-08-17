@@ -21,7 +21,10 @@ class JSBase {
 public:
   JSBase();
 
-  virtual JSValue get_property(JSValue key);
+  virtual JSValue get_property(JSValue key, JSValue parent);
+  virtual std::optional<JSValue>
+  get_property_from_list(const std::vector<std::pair<JSValue, JSValue>> &list,
+                         JSValue key, JSValue parent);
 
   std::vector<std::pair<JSValue, JSValue>> properties;
 };
@@ -51,7 +54,7 @@ public:
   JSArray();
   JSArray(std::vector<JSValue> data);
 
-  virtual JSValue get_property(JSValue key);
+  virtual JSValue get_property(JSValue key, JSValue parent);
 
   shared_ptr<std::vector<JSValue>> internal;
 
@@ -67,7 +70,7 @@ public:
   JSObject();
   JSObject(std::vector<std::pair<JSValue, JSValue>> data);
 
-  virtual JSValue get_property(JSValue key);
+  virtual JSValue get_property(JSValue key, JSValue parent);
 
   shared_ptr<std::vector<std::pair<JSValue, JSValue>>> internal;
 };

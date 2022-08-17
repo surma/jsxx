@@ -66,7 +66,7 @@ public:
   JSValue operator++(int); // Postfix
   JSValue &operator--();   // Prefix
   JSValue operator--(int); // Postfix
-  JSValue operator==(const JSValue other);
+  JSValue operator==(const JSValue other) const;
   JSValue operator!();
   JSValue operator<(const JSValue other);
   JSValue operator<=(const JSValue other);
@@ -94,7 +94,7 @@ public:
   static JSValue iterator_from_next_func(JSValue next_func);
   static JSValue with_getter_setter(JSValue getter, JSValue setter);
 
-  JSValue get_property(const JSValue key);
+  JSValue get_property(const JSValue key, JSValue parent);
   JSValue apply(JSValue thisArg, std::vector<JSValue> args);
 
   JSValueType type() const;
