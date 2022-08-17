@@ -126,6 +126,9 @@ JSValue JSValue::operator--(int) {
 }
 
 JSValue JSValue::operator=(const Box &other) {
+  if (this->setter.has_value()) {
+    return (*this->setter)(*this, {other});
+  }
   *this->value = other;
   return other;
 }
@@ -276,19 +279,19 @@ JSValue JSValue::get_property(const JSValue key) {
 
 JSValue JSValue::with_getter_setter(JSValue getter, JSValue setter) {
   JSValue b{};
-  b.getter = std::optional{[=](JSValue v) {
+  b.getter = std::optional{[=](JSValue v) -> JSValue {
     if (getter.type() != JSValueType::FUNCTION)
       return JSValue::undefined();
     auto f = std::get<JSValueType::FUNCTION>(*getter.value);
     std::vector<JSValue> params{};
     return f.call(v.get_parent(), params);
   }};
-  b.setter = std::optional{[=](JSValue v, JSValue new_v) {
+  b.setter = std::optional{[=](JSValue v, JSValue new_v) -> JSValue {
     if (setter.type() != JSValueType::FUNCTION)
-      return;
+      return JSValue::undefined();
     auto f = std::get<JSValueType::FUNCTION>(*setter.value);
     std::vector<JSValue> params{new_v};
-    f.call(v.get_parent(), params);
+    return f.call(v.get_parent(), params);
   }};
   return b;
 }

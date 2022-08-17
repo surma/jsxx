@@ -45,7 +45,7 @@ class JSValue {
                            JSFunction, std::shared_ptr<JSObject>>;
 
   using Getter = std::function<JSValue(JSValue)>;
-  using Setter = std::function<void(JSValue, JSValue)>;
+  using Setter = std::function<JSValue(JSValue, JSValue)>;
 
 public:
   JSValue();
