@@ -219,3 +219,5 @@ JSGeneratorAdapter::promise_type::yield_value(JSValue value) {
       std::optional<shared_ptr<JSValue>>{std::make_shared<JSValue>(value)};
   return {};
 }
+
+JSValue iterator_symbol = JSValue::new_object({});

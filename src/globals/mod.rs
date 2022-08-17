@@ -1,5 +1,6 @@
 pub mod io;
 pub mod json;
+pub mod symbol;
 
 pub struct Global {
     pub name: String,

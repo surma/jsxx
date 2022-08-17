@@ -152,10 +152,14 @@ JSValue JSValue::operator==(const JSValue other) {
                    other.coerce_to_bool()};
   }
   if (this->type() == JSValueType::ARRAY) {
+    if (other.type() != JSValueType::ARRAY)
+      return JSValue{false};
     return JSValue{std::get<JSValueType::ARRAY>(*this->internal).get() ==
                    std::get<JSValueType::ARRAY>(*other.internal).get()};
   }
   if (this->type() == JSValueType::OBJECT) {
+    if (other.type() != JSValueType::OBJECT)
+      return JSValue{false};
     return JSValue{std::get<JSValueType::OBJECT>(*this->internal).get() ==
                    std::get<JSValueType::OBJECT>(*other.internal).get()};
   }
@@ -240,7 +244,7 @@ JSValue JSValue::operator()(std::vector<JSValue> args) {
   return this->apply(*this_arg_ptr, args);
 }
 
-JSIterator JSValue::begin() { return JSIterator{(*this)["iterator"]({})}; }
+JSIterator JSValue::begin() { return JSIterator{(*this)[iterator_symbol]({})}; }
 
 JSIterator JSValue::end() { return JSIterator::end_marker(); }
 
@@ -411,7 +415,7 @@ JSValue JSIterator::value() {
 
 JSValue JSValue::iterator_from_next_func(JSValue next_func) {
   return JSValue::new_object(
-      {{JSValue{"iterator"},
+      {{iterator_symbol,
         JSValueBinding::with_value(JSValue::new_function(
             [=](JSValue thisArg, std::vector<JSValue> &args) mutable {
               return JSValue::new_object(

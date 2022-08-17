@@ -48,6 +48,7 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
     let mut transpiler = transpiler::Transpiler::new();
     transpiler.globals.push(globals::io::io_global());
     transpiler.globals.push(globals::json::json_global());
+    transpiler.globals.push(globals::symbol::symbol_global());
     transpiler.transpile_module(&module)
 }
 
@@ -72,6 +73,7 @@ fn cpp_to_binary(
                 outputname.as_ref(),
                 cpp_file_name.as_ref(),
                 "runtime/global_json.cpp",
+                "runtime/global_symbol.cpp",
                 "runtime/global_io.cpp",
                 "runtime/js_primitives.cpp",
                 "runtime/js_value_binding.cpp",
@@ -610,19 +612,20 @@ mod test {
         let output = compile_and_run(
             r#"
                 let v = {};
+                let v1 = v;
                 let v2 = {};
                 let c = 0;
-                if(v == v) {
+                if(v == v1) {
                     c = c+1;
                 }
-                if(v == v2) {
+                if(v != v2) {
                     c = c+2;
                 }
 
                 IO.write_to_stdout("" + c);
             "#,
         )?;
-        assert_eq!(&output[0..2], "1.");
+        assert_eq!(&output[0..2], "3.");
         Ok(())
     }
 
@@ -721,7 +724,7 @@ mod test {
         let output = compile_and_run(
             r#"
                 let it = {
-                    iterator() {
+                    [Symbol.iterator]() {
                         return this;
                     },
                     i: 0,

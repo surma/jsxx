@@ -102,3 +102,5 @@ struct JSGeneratorAdapter {
 
   std::experimental::coroutine_handle<promise_type> h;
 };
+
+extern JSValue iterator_symbol;

@@ -118,7 +118,7 @@ impl Transpiler {
         ))
     }
 
-    fn transpile_break_stmt(&mut self, break_stmt: &BreakStmt) -> Result<String> {
+    fn transpile_break_stmt(&mut self, _break_stmt: &BreakStmt) -> Result<String> {
         Ok(format!("break"))
     }
 
