@@ -400,10 +400,7 @@ impl Transpiler {
 
     fn transpile_prop_method(&mut self, method: &MethodProp) -> Result<String> {
         Ok(format!(
-            r#"{{
-                {},
-                JSValueBinding::with_value({})
-            }}"#,
+            "{{ {}, {} }}",
             self.transpile_prop_name(&method.key)?,
             self.transpile_function(&method.function)?
         ))
@@ -451,17 +448,14 @@ impl Transpiler {
 
     fn transpile_prop_keyvalue(&mut self, key_value: &KeyValueProp) -> Result<String> {
         Ok(format!(
-            "{{{}, JSValueBinding::with_value({})}}",
+            "{{{}, {}}}",
             self.transpile_prop_name(&key_value.key)?,
             self.transpile_expr(&key_value.value)?
         ))
     }
 
     fn transpile_prop_shorthand(&mut self, ident: &Ident) -> Result<String> {
-        Ok(format!(
-            r#"{{JSValue{{"{0}"}}, JSValueBinding::with_value({0})}}"#,
-            ident.sym
-        ))
+        Ok(format!(r#"{{JSValue{{"{0}"}}, {0}}}"#, ident.sym))
     }
 
     fn transpile_prop_name(&mut self, prop_name: &PropName) -> Result<String> {
@@ -570,11 +564,11 @@ impl Transpiler {
             }
             _ => return Err(anyhow!("Unsupported member prop {:?}", member_expr.prop)),
         };
-        Ok(if self.is_lhs {
-            format!(r#"{}.get_property_slot({})"#, obj, prop)
-        } else {
-            format!(r#"{}[{}]"#, obj, prop)
-        })
+        // Ok(if self.is_lhs {
+        //     format!(r#"{}.get_property({})"#, obj, prop)
+        // } else {
+        Ok(format!(r#"{}[{}]"#, obj, prop))
+        // })
     }
 
     fn transpile_call_expr(&mut self, call_expr: &CallExpr) -> Result<String> {

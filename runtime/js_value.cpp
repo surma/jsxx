@@ -47,15 +47,11 @@ JSValue::JSValue(JSArray v)
                     shared_ptr<JSArray>{new JSArray{v}}}},
       parent_value{} {};
 
-JSValue::JSValue(JSValueBinding v)
-    : value{new Box{*v.get().value}}, parent_value{} {};
-
 JSValue::JSValue(Box v) : value{new Box{v}}, parent_value{} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
 
-JSValue
-JSValue::new_object(std::vector<std::pair<JSValue, JSValueBinding>> pairs) {
+JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
   return JSValue{JSObject{pairs}};
 }
 
@@ -85,10 +81,8 @@ JSValue JSValue::new_generator_function(CoroutineFunc gen_f) {
           auto v = corot->value().promise().value;
           return JSValue::new_object(
               {{JSValue{"value"},
-                JSValueBinding::with_value(*v.value_or(
-                    std::make_shared<JSValue>(JSValue::undefined())))},
-               {JSValue{"done"},
-                JSValueBinding::with_value(JSValue{!v.has_value()})}});
+                *v.value_or(std::make_shared<JSValue>(JSValue::undefined()))},
+               {JSValue{"done"}, JSValue{!v.has_value()}}});
         }));
   });
 }
@@ -249,38 +243,35 @@ JSIterator JSValue::begin() { return JSIterator{(*this)[iterator_symbol]({})}; }
 JSIterator JSValue::end() { return JSIterator::end_marker(); }
 
 JSValue JSValue::get_property(const JSValue key) {
-  return this->get_property_slot(key).get();
-}
-
-JSValueBinding JSValue::get_property_slot(const JSValue key) {
-  JSValueBinding v;
+  JSValue v;
   switch (this->type()) {
   case JSValueType::UNDEFINED:
-    v = JSValueBinding::with_value(JSValue::undefined());
+    v = JSValue::undefined();
     break;
   case JSValueType::BOOL:
-    v = std::get<JSValueType::BOOL>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::BOOL>(*this->value).get_property(key);
     break;
   case JSValueType::NUMBER:
-    v = std::get<JSValueType::NUMBER>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::NUMBER>(*this->value).get_property(key);
     break;
   case JSValueType::STRING:
-    v = std::get<JSValueType::STRING>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::STRING>(*this->value).get_property(key);
     break;
   case JSValueType::ARRAY:
-    v = std::get<JSValueType::ARRAY>(*this->value)->get_property_slot(key);
+    v = std::get<JSValueType::ARRAY>(*this->value)->get_property(key);
     break;
   case JSValueType::OBJECT:
-    v = std::get<JSValueType::OBJECT>(*this->value)->get_property_slot(key);
+    v = std::get<JSValueType::OBJECT>(*this->value)->get_property(key);
     break;
   case JSValueType::FUNCTION:
-    v = std::get<JSValueType::FUNCTION>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::FUNCTION>(*this->value).get_property(key);
     break;
   case JSValueType::EXCEPTION:
-    v = std::get<JSValueType::EXCEPTION>(*this->value)->get_property_slot(key);
+    v = std::get<JSValueType::EXCEPTION>(*this->value)->get_property(key);
     break;
   };
-  v.set_parent(*this);
+  // FIXME
+  // v.set_parent(*this);
   return v;
 }
 
@@ -373,8 +364,8 @@ JSIterator JSIterator::end_marker() {
   JSIterator it{};
   it.last_value =
       std::optional{shared_ptr<JSValue>{new JSValue{JSValue::new_object({
-          {JSValue{"value"}, JSValueBinding::with_value(JSValue::undefined())},
-          {JSValue{"done"}, JSValueBinding::with_value(JSValue{true})},
+          {JSValue{"value"}, JSValue::undefined()},
+          {JSValue{"done"}, JSValue{true}},
       })}}};
   return it;
 }
@@ -414,9 +405,8 @@ JSValue JSIterator::value() {
 JSValue JSValue::iterator_from_next_func(JSValue next_func) {
   return JSValue::new_object(
       {{iterator_symbol,
-        JSValueBinding::with_value(JSValue::new_function(
+        JSValue::new_function(
             [=](JSValue thisArg, std::vector<JSValue> &args) mutable {
-              return JSValue::new_object(
-                  {{JSValue{"next"}, JSValueBinding::with_value(next_func)}});
-            }))}});
+              return JSValue::new_object({{JSValue{"next"}, next_func}});
+            })}});
 };

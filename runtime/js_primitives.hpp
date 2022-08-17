@@ -8,12 +8,10 @@
 #include <vector>
 
 #include "js_value.hpp"
-#include "js_value_binding.hpp"
 
 using std::shared_ptr;
 
 class JSValue;
-class JSValueBinding;
 
 class JSUndefined {
   JSValue operator==(JSValue &other);
@@ -24,9 +22,8 @@ public:
   JSBase();
 
   virtual JSValue get_property(JSValue key);
-  virtual JSValueBinding get_property_slot(JSValue key);
 
-  std::vector<std::pair<JSValue, JSValueBinding>> properties;
+  std::vector<std::pair<JSValue, JSValue>> properties;
 };
 
 class JSBool : public JSBase {
@@ -54,9 +51,9 @@ public:
   JSArray();
   JSArray(std::vector<JSValue> data);
 
-  virtual JSValueBinding get_property_slot(JSValue key);
+  virtual JSValue get_property(JSValue key);
 
-  shared_ptr<std::vector<JSValueBinding>> internal;
+  shared_ptr<std::vector<JSValue>> internal;
 
   static JSValue push_impl(JSValue thisArg, std::vector<JSValue> &args);
   static JSValue map_impl(JSValue thisArg, std::vector<JSValue> &args);
@@ -69,11 +66,10 @@ class JSObject : public JSBase {
 public:
   JSObject();
   JSObject(std::vector<std::pair<JSValue, JSValue>> data);
-  JSObject(std::vector<std::pair<JSValue, JSValueBinding>> data);
 
-  virtual JSValueBinding get_property_slot(JSValue key);
+  virtual JSValue get_property(JSValue key);
 
-  shared_ptr<std::vector<std::pair<JSValue, JSValueBinding>>> internal;
+  shared_ptr<std::vector<std::pair<JSValue, JSValue>>> internal;
 };
 
 using ExternFunc = std::function<JSValue(JSValue, std::vector<JSValue> &)>;

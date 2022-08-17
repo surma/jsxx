@@ -5,7 +5,6 @@
 #include <variant>
 
 #include "js_primitives.hpp"
-#include "js_value_binding.hpp"
 
 using std::optional;
 using std::shared_ptr;
@@ -20,6 +19,7 @@ class JSObject;
 class JSFunction;
 class JSIterator;
 class JSGeneratorAdapter;
+class JSValue;
 
 // Idk what C++ wants from me... This type alias is defined in
 // `js_primitives.hpp` but the cyclic includes seem to make it impossible to see
@@ -56,7 +56,6 @@ public:
   JSValue(JSFunction v);
   JSValue(JSObject v);
   JSValue(JSArray v);
-  JSValue(JSValueBinding v);
   JSValue(Box v);
 
   JSValue operator=(const Box &other);
@@ -84,7 +83,7 @@ public:
   JSIterator begin();
   JSIterator end();
 
-  static JSValue new_object(std::vector<std::pair<JSValue, JSValueBinding>>);
+  static JSValue new_object(std::vector<std::pair<JSValue, JSValue>>);
   static JSValue new_array(std::vector<JSValue>);
   static JSValue new_function(ExternFunc f);
   static JSValue new_generator_function(CoroutineFunc gen_f);
@@ -92,7 +91,6 @@ public:
   static JSValue iterator_from_next_func(JSValue next_func);
 
   JSValue get_property(const JSValue key);
-  JSValueBinding get_property_slot(const JSValue key);
   JSValue apply(JSValue thisArg, std::vector<JSValue> args);
 
   JSValueType type() const;
