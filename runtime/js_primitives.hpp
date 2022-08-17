@@ -1,5 +1,6 @@
 #pragma once
 
+#include <experimental/coroutine>
 #include <functional>
 #include <memory>
 #include <string>
@@ -84,4 +85,20 @@ public:
   ExternFunc internal;
 
   JSValue call(JSValue thisArg, std::vector<JSValue> &);
+};
+
+struct JSGeneratorAdapter {
+  struct promise_type {
+    JSGeneratorAdapter get_return_object();
+    std::experimental::suspend_never initial_suspend();
+    std::experimental::suspend_never final_suspend() noexcept;
+    void return_void() noexcept;
+    void unhandled_exception();
+
+    std::experimental::suspend_always yield_value(JSValue value);
+
+    std::optional<std::shared_ptr<JSValue>> value;
+  };
+
+  std::experimental::coroutine_handle<promise_type> h;
 };

@@ -65,6 +65,34 @@ JSValue JSValue::new_array(std::vector<JSValue> values) {
 
 JSValue JSValue::new_function(ExternFunc f) { return JSValue{JSFunction{f}}; }
 
+JSValue JSValue::new_generator_function(CoroutineFunc gen_f) {
+  return JSValue::new_function([=](JSValue thisArg,
+                                   std::vector<JSValue> &args) mutable
+                               -> JSValue {
+    std::shared_ptr<std::optional<
+        std::experimental::coroutine_handle<JSGeneratorAdapter::promise_type>>>
+        corot =
+            std::make_shared<std::optional<std::experimental::coroutine_handle<
+                JSGeneratorAdapter::promise_type>>>(std::nullopt);
+    return JSValue::iterator_from_next_func(JSValue::new_function(
+        [corot, gen_f](JSValue thisArg,
+                       std::vector<JSValue> &args) mutable -> JSValue {
+          if (!corot->has_value()) {
+            *corot = std::optional{gen_f(thisArg, args).h};
+          } else {
+            corot->value()();
+          }
+          auto v = corot->value().promise().value;
+          return JSValue::new_object(
+              {{JSValue{"value"},
+                JSValueBinding::with_value(*v.value_or(
+                    std::make_shared<JSValue>(JSValue::undefined())))},
+               {JSValue{"done"},
+                JSValueBinding::with_value(JSValue{!v.has_value()})}});
+        }));
+  });
+}
+
 JSValue &JSValue::operator++() {
   if (this->type() != JSValueType::NUMBER) {
     *this = JSValue::undefined();
@@ -380,3 +408,13 @@ JSValue JSIterator::value() {
   }
   return *this->last_value.value();
 }
+
+JSValue JSValue::iterator_from_next_func(JSValue next_func) {
+  return JSValue::new_object(
+      {{JSValue{"iterator"},
+        JSValueBinding::with_value(JSValue::new_function(
+            [=](JSValue thisArg, std::vector<JSValue> &args) mutable {
+              return JSValue::new_object(
+                  {{JSValue{"next"}, JSValueBinding::with_value(next_func)}});
+            }))}});
+};

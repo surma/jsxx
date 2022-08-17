@@ -191,3 +191,31 @@ JSFunction::JSFunction(ExternFunc f) : JSBase(), internal{f} {};
 JSValue JSFunction::call(JSValue thisArg, std::vector<JSValue> &args) {
   return this->internal(thisArg, args);
 }
+
+JSGeneratorAdapter JSGeneratorAdapter::promise_type::get_return_object() {
+  return {.h = std::experimental::coroutine_handle<promise_type>::from_promise(
+              *this)};
+}
+
+std::experimental::suspend_never
+JSGeneratorAdapter::promise_type::initial_suspend() {
+  return {};
+}
+
+std::experimental::suspend_never
+JSGeneratorAdapter::promise_type::final_suspend() noexcept {
+  return {};
+}
+
+void JSGeneratorAdapter::promise_type::return_void() noexcept {
+  this->value = std::nullopt;
+}
+
+void JSGeneratorAdapter::promise_type::unhandled_exception() {}
+
+std::experimental::suspend_always
+JSGeneratorAdapter::promise_type::yield_value(JSValue value) {
+  this->value =
+      std::optional<shared_ptr<JSValue>>{std::make_shared<JSValue>(value)};
+  return {};
+}

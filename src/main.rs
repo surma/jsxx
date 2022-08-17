@@ -60,7 +60,6 @@ fn cpp_to_binary(
     let cpp_file_name = format!("./{}.cpp", outputname);
     let mut tempfile = File::create(&cpp_file_name)?;
     tempfile.write_all(code.as_bytes())?;
-    tempfile.flush();
     drop(tempfile);
 
     let args = flags
@@ -68,7 +67,7 @@ fn cpp_to_binary(
         .map(|i| i.as_ref())
         .chain(
             [
-                "--std=c++17",
+                "--std=c++20",
                 "-o",
                 outputname.as_ref(),
                 cpp_file_name.as_ref(),
@@ -103,7 +102,7 @@ fn main() -> Result<()> {
     let cpp_code = js_to_cpp(&input)?;
 
     if args.emit_cpp {
-        let (status, stdout, stderr) =
+        let (_status, stdout, _stderr) =
             command_utils::pipe_through_shell::<String>("clang-format", &[], cpp_code.as_bytes())?;
         println!("{}", String::from_utf8(stdout)?);
     } else {
@@ -738,6 +737,29 @@ mod test {
                 };
                 let arr = [];
                 for(let v of it) {
+                    arr.push(v)
+                }
+                let sum = arr.reduce((sum, c) => sum +c, 0);
+                IO.write_to_stdout(sum == 10 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
+    fn generator() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function* gen() {
+                    yield 1;
+                    yield 2;
+                    yield 3;
+                    yield 4;
+                    return;
+                }
+                let arr = [];
+                for(let v of gen()) {
                     arr.push(v)
                 }
                 let sum = arr.reduce((sum, c) => sum +c, 0);

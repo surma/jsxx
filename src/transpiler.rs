@@ -6,6 +6,7 @@ use swc_ecma_ast::*;
 pub struct Transpiler {
     pub globals: Vec<crate::globals::Global>,
     is_lhs: bool,
+    is_generator: bool,
 }
 
 impl Transpiler {
@@ -13,6 +14,7 @@ impl Transpiler {
         Transpiler {
             globals: vec![],
             is_lhs: false,
+            is_generator: false,
         }
     }
 
@@ -62,6 +64,7 @@ impl Transpiler {
         Ok(format!(
             r#"
                 {additional_includes}
+                #include <experimental/coroutine>
                 #include "runtime/js_value.hpp"
 
                 int main() {{
@@ -191,7 +194,12 @@ impl Transpiler {
             None => "".to_string(),
             Some(expr) => self.transpile_expr(expr)?,
         };
-        Ok(format!("return {};", arg))
+        let ret_style = if self.is_generator {
+            "co_return"
+        } else {
+            "return"
+        };
+        Ok(format!("{} {};", ret_style, arg))
     }
 
     fn transpile_decl(&mut self, decl: &Decl) -> Result<String> {
@@ -250,8 +258,22 @@ impl Transpiler {
             Expr::Assign(assign_expr) => self.transpile_assign_expr(assign_expr),
             Expr::Cond(cond_expr) => self.transpile_cond_expr(cond_expr),
             Expr::Update(update_expr) => self.transpile_update_expr(update_expr),
+            Expr::Yield(yield_expr) => self.transpile_yield_expr(yield_expr),
             _ => Err(anyhow!("Unsupported expression {:?}", expr)),
         }
+    }
+
+    fn transpile_yield_expr(&mut self, yield_expr: &YieldExpr) -> Result<String> {
+        if yield_expr.delegate {
+            return Err(anyhow!("No support for delegate yields yet."));
+        }
+        let value = yield_expr
+            .arg
+            .as_ref()
+            .map(|arg| self.transpile_expr(arg))
+            .transpose()?
+            .unwrap_or(format!("JSValue::undefined()"));
+        Ok(format!("co_yield {}", value))
     }
 
     fn transpile_update_expr(&mut self, update_expr: &UpdateExpr) -> Result<String> {
@@ -302,6 +324,36 @@ impl Transpiler {
     }
 
     fn transpile_function(&mut self, function: &Function) -> Result<String> {
+        if function.is_async {
+            return Err(anyhow!("Async functions not supported yet"));
+        }
+        if function.is_generator {
+            return self.transpile_generator_function(function);
+        }
+        return self.transpile_plain_function(function);
+    }
+
+    fn transpile_generator_function(&mut self, function: &Function) -> Result<String> {
+        assert!(function.is_generator);
+        self.is_generator = true;
+        let param_destructure =
+            self.transpile_param_destructure(function.params.iter().map(|param| &param.pat))?;
+        let body = match &function.body {
+            Some(block_stmt) => self.transpile_block_stmt(block_stmt)?,
+            _ => return Err(anyhow!("Function lacks a body")),
+        };
+        self.is_generator = false;
+        Ok(format!(
+            "JSValue::new_generator_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSGeneratorAdapter {{
+                    {}
+                    {}
+                    co_return;
+                }})",
+            param_destructure, body
+        ))
+    }
+
+    fn transpile_plain_function(&mut self, function: &Function) -> Result<String> {
         let param_destructure =
             self.transpile_param_destructure(function.params.iter().map(|param| &param.pat))?;
         let body = match &function.body {
@@ -499,7 +551,6 @@ impl Transpiler {
         let body = match &arrow_expr.body {
             BlockStmtOrExpr::Expr(expr) => format!("return {};", self.transpile_expr(expr)?),
             BlockStmtOrExpr::BlockStmt(block_stmt) => self.transpile_block_stmt(block_stmt)?,
-            _ => return Err(anyhow!("Unsupported body {:?}", arrow_expr.body)),
         };
         Ok(format!(
             "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{
