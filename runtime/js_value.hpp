@@ -18,11 +18,15 @@ class JSString;
 class JSArray;
 class JSObject;
 class JSFunction;
+class JSIterator;
+class JSGeneratorAdapter;
 
 // Idk what C++ wants from me... This type alias is defined in
 // `js_primitives.hpp` but the cyclic includes seem to make it impossible to see
 // that here.
 using ExternFunc = std::function<JSValue(JSValue, std::vector<JSValue> &)>;
+using CoroutineFunc =
+    std::function<JSGeneratorAdapter(JSValue, std::vector<JSValue> &)>;
 
 enum JSValueType : char {
   UNDEFINED,
@@ -77,10 +81,15 @@ public:
   JSValue operator[](const size_t index);
   JSValue operator()(std::vector<JSValue> args);
 
+  JSIterator begin();
+  JSIterator end();
+
   static JSValue new_object(std::vector<std::pair<JSValue, JSValueBinding>>);
   static JSValue new_array(std::vector<JSValue>);
   static JSValue new_function(ExternFunc f);
+  static JSValue new_generator_function(CoroutineFunc gen_f);
   static JSValue undefined();
+  static JSValue iterator_from_next_func(JSValue next_func);
 
   JSValue get_property(const JSValue key);
   JSValueBinding get_property_slot(const JSValue key);
@@ -96,4 +105,21 @@ public:
 
   shared_ptr<Box> internal;
   optional<shared_ptr<JSValue>> parent_value;
+};
+
+// TODO: Move me primitives?
+class JSIterator {
+public:
+  JSIterator();
+  JSIterator(JSValue val);
+  static JSIterator end_marker();
+
+  JSValue operator*();
+  JSIterator operator++();
+  bool operator!=(const JSIterator &other);
+
+  JSValue value();
+
+  shared_ptr<JSValue> it;
+  optional<shared_ptr<JSValue>> last_value = std::nullopt;
 };

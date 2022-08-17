@@ -93,6 +93,16 @@ static JSValue json_parse_value(const char **input) {
     return json_parse_array(input);
   if (is_digit(**input) || **input == '.' || **input == '-')
     return json_parse_number(input);
+  if (*input[0] == 't' && *input[1] == 'r' && *input[2] == 'u' &&
+      *input[3] == 'e') {
+    *input += 4;
+    return JSValue{true};
+  }
+  if (*input[0] == 'f' && *input[1] == 'a' && *input[2] == 'l' &&
+      *input[3] == 's' && *input[4] == 'e') {
+    *input += 5;
+    return JSValue{false};
+  }
   return JSValue::undefined();
 }
 
@@ -149,6 +159,8 @@ static std::string json_stringify_value(JSValue v) {
     return json_stringify_number(std::get<JSValueType::NUMBER>(*v.internal));
   if (v.type() == JSValueType::STRING)
     return json_stringify_string(std::get<JSValueType::STRING>(*v.internal));
+  if (v.type() == JSValueType::BOOL)
+    return v.coerce_to_string();
   return std::string("<IDK MAN>");
 }
 

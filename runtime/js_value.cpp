@@ -65,6 +65,34 @@ JSValue JSValue::new_array(std::vector<JSValue> values) {
 
 JSValue JSValue::new_function(ExternFunc f) { return JSValue{JSFunction{f}}; }
 
+JSValue JSValue::new_generator_function(CoroutineFunc gen_f) {
+  return JSValue::new_function([=](JSValue thisArg,
+                                   std::vector<JSValue> &args) mutable
+                               -> JSValue {
+    std::shared_ptr<std::optional<
+        std::experimental::coroutine_handle<JSGeneratorAdapter::promise_type>>>
+        corot =
+            std::make_shared<std::optional<std::experimental::coroutine_handle<
+                JSGeneratorAdapter::promise_type>>>(std::nullopt);
+    return JSValue::iterator_from_next_func(JSValue::new_function(
+        [corot, gen_f](JSValue thisArg,
+                       std::vector<JSValue> &args) mutable -> JSValue {
+          if (!corot->has_value()) {
+            *corot = std::optional{gen_f(thisArg, args).h};
+          } else {
+            corot->value()();
+          }
+          auto v = corot->value().promise().value;
+          return JSValue::new_object(
+              {{JSValue{"value"},
+                JSValueBinding::with_value(*v.value_or(
+                    std::make_shared<JSValue>(JSValue::undefined())))},
+               {JSValue{"done"},
+                JSValueBinding::with_value(JSValue{!v.has_value()})}});
+        }));
+  });
+}
+
 JSValue &JSValue::operator++() {
   if (this->type() != JSValueType::NUMBER) {
     *this = JSValue::undefined();
@@ -122,6 +150,18 @@ JSValue JSValue::operator==(const JSValue other) {
   if (this->type() == JSValueType::BOOL) {
     return JSValue{std::get<JSValueType::BOOL>(*this->internal).internal ==
                    other.coerce_to_bool()};
+  }
+  if (this->type() == JSValueType::ARRAY) {
+    if (other.type() != JSValueType::ARRAY)
+      return JSValue{false};
+    return JSValue{std::get<JSValueType::ARRAY>(*this->internal).get() ==
+                   std::get<JSValueType::ARRAY>(*other.internal).get()};
+  }
+  if (this->type() == JSValueType::OBJECT) {
+    if (other.type() != JSValueType::OBJECT)
+      return JSValue{false};
+    return JSValue{std::get<JSValueType::OBJECT>(*this->internal).get() ==
+                   std::get<JSValueType::OBJECT>(*other.internal).get()};
   }
   return JSValue{"Equality not implemented for this type yet"};
 }
@@ -203,6 +243,10 @@ JSValue JSValue::operator()(std::vector<JSValue> args) {
       shared_ptr<JSValue>{new JSValue{JSValue::undefined()}});
   return this->apply(*this_arg_ptr, args);
 }
+
+JSIterator JSValue::begin() { return JSIterator{(*this)[iterator_symbol]({})}; }
+
+JSIterator JSValue::end() { return JSIterator::end_marker(); }
 
 JSValue JSValue::get_property(const JSValue key) {
   return this->get_property_slot(key).get();
@@ -320,3 +364,61 @@ JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
   JSFunction f = std::get<JSValueType::FUNCTION>(*this->internal);
   return f.call(thisArg, args);
 }
+
+JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}
+
+JSIterator::JSIterator(JSValue val) {
+  this->it = shared_ptr<JSValue>{new JSValue{val}};
+}
+
+JSIterator JSIterator::end_marker() {
+  JSIterator it{};
+  it.last_value =
+      std::optional{shared_ptr<JSValue>{new JSValue{JSValue::new_object({
+          {JSValue{"value"}, JSValueBinding::with_value(JSValue::undefined())},
+          {JSValue{"done"}, JSValueBinding::with_value(JSValue{true})},
+      })}}};
+  return it;
+}
+
+JSValue JSIterator::operator*() { return this->value()["value"]; }
+
+JSIterator JSIterator::operator++() {
+  if (!this->it->is_undefined()) {
+    this->last_value = std::optional{
+        shared_ptr<JSValue>{new JSValue{(*this->it)["next"]({})}}};
+  }
+  return *this;
+}
+
+bool JSIterator::operator!=(const JSIterator &other) {
+  if (other.last_value.has_value() != this->last_value.has_value()) {
+    return true;
+  }
+  JSValue left = *this->last_value.value();
+  JSValue right = *other.last_value.value();
+  bool left_done = left["done"].coerce_to_bool();
+  bool right_done = right["done"].coerce_to_bool();
+  if (left_done && right_done) {
+    return false;
+  }
+  return left_done != right_done ||
+         (left["value"] != right["value"]).coerce_to_bool();
+}
+
+JSValue JSIterator::value() {
+  if (!this->last_value.has_value()) {
+    ++(*this);
+  }
+  return *this->last_value.value();
+}
+
+JSValue JSValue::iterator_from_next_func(JSValue next_func) {
+  return JSValue::new_object(
+      {{iterator_symbol,
+        JSValueBinding::with_value(JSValue::new_function(
+            [=](JSValue thisArg, std::vector<JSValue> &args) mutable {
+              return JSValue::new_object(
+                  {{JSValue{"next"}, JSValueBinding::with_value(next_func)}});
+            }))}});
+};

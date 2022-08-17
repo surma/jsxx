@@ -48,6 +48,7 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
     let mut transpiler = transpiler::Transpiler::new();
     transpiler.globals.push(globals::io::io_global());
     transpiler.globals.push(globals::json::json_global());
+    transpiler.globals.push(globals::symbol::symbol_global());
     transpiler.transpile_module(&module)
 }
 
@@ -60,7 +61,6 @@ fn cpp_to_binary(
     let cpp_file_name = format!("./{}.cpp", outputname);
     let mut tempfile = File::create(&cpp_file_name)?;
     tempfile.write_all(code.as_bytes())?;
-    tempfile.flush();
     drop(tempfile);
 
     let args = flags
@@ -68,11 +68,12 @@ fn cpp_to_binary(
         .map(|i| i.as_ref())
         .chain(
             [
-                "--std=c++17",
+                "--std=c++20",
                 "-o",
                 outputname.as_ref(),
                 cpp_file_name.as_ref(),
                 "runtime/global_json.cpp",
+                "runtime/global_symbol.cpp",
                 "runtime/global_io.cpp",
                 "runtime/js_primitives.cpp",
                 "runtime/js_value_binding.cpp",
@@ -103,7 +104,7 @@ fn main() -> Result<()> {
     let cpp_code = js_to_cpp(&input)?;
 
     if args.emit_cpp {
-        let (status, stdout, stderr) =
+        let (_status, stdout, _stderr) =
             command_utils::pipe_through_shell::<String>("clang-format", &[], cpp_code.as_bytes())?;
         println!("{}", String::from_utf8(stdout)?);
     } else {
@@ -505,6 +506,18 @@ mod test {
     }
 
     #[test]
+    fn object_func_prop() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {a() { return "hi"; }};
+                IO.write_to_stdout(v.a());
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
     fn object_func_this() -> Result<()> {
         let output = compile_and_run(
             r#"
@@ -595,6 +608,44 @@ mod test {
     }
 
     #[test]
+    fn object_equality() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {};
+                let v1 = v;
+                let v2 = {};
+                let c = 0;
+                if(v == v1) {
+                    c = c+1;
+                }
+                if(v != v2) {
+                    c = c+2;
+                }
+
+                IO.write_to_stdout("" + c);
+            "#,
+        )?;
+        assert_eq!(&output[0..2], "3.");
+        Ok(())
+    }
+
+    #[test]
+    fn object_computed() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let k = "abc";
+                let v = {
+                    [k]: "hi",
+                    ["x"+"y"]: "hi2"
+                };
+                IO.write_to_stdout(v.abc + v.xy);
+            "#,
+        )?;
+        assert_eq!(output, "hihi2");
+        Ok(())
+    }
+
+    #[test]
     fn json_stringify_array() -> Result<()> {
         let output = compile_and_run(
             r#"
@@ -633,6 +684,95 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn while_loop() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = [];
+                let i = 0;
+                while(i < 4) {
+                    v.push("a")
+                    i = i + 1;
+                }
+                IO.write_to_stdout(v.join(""));
+            "#,
+        )?;
+        assert_eq!(output, "aaaa");
+        Ok(())
+    }
+
+    #[test]
+    fn while_loop_break() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = [];
+                let i = 0;
+                while(true) {
+                    v.push("a")
+                    i = i + 1;
+                    if(i >= 4) break;
+                }
+                IO.write_to_stdout(v.join(""));
+            "#,
+        )?;
+        assert_eq!(output, "aaaa");
+        Ok(())
+    }
+
+    #[test]
+    fn iterator() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let it = {
+                    [Symbol.iterator]() {
+                        return this;
+                    },
+                    i: 0,
+                    next() {
+                        if(this.i > 4) {
+                            return {done: true};
+                        }
+                        return {
+                            value: this.i++,
+                            done: false
+                        };
+                    }
+                };
+                let arr = [];
+                for(let v of it) {
+                    arr.push(v)
+                }
+                let sum = arr.reduce((sum, c) => sum +c, 0);
+                IO.write_to_stdout(sum == 10 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
+    fn generator() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function* gen() {
+                    yield 1;
+                    yield 2;
+                    yield 3;
+                    yield 4;
+                    return;
+                }
+                let arr = [];
+                for(let v of gen()) {
+                    arr.push(v)
+                }
+                let sum = arr.reduce((sum, c) => sum +c, 0);
+                IO.write_to_stdout(sum == 10 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
@@ -642,7 +782,7 @@ mod test {
             "clang++".to_string(),
             &Vec::<String>::new(),
         )?;
-        let mut child = Command::new(format!("./{}", &name))
+        let child = Command::new(format!("./{}", &name))
             .stdout(Stdio::piped())
             .spawn()?;
         let output = child.wait_with_output()?;
