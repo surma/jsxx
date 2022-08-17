@@ -70,7 +70,7 @@ JSArray::JSArray(std::vector<JSValue> data) : JSArray() {
 JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
     return JSValue::undefined();
-  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   for (auto v : args) {
     arr->internal->push_back(JSValueBinding::with_value(v));
   }
@@ -83,7 +83,7 @@ JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
   JSValue f = args[0];
   if (f.type() != JSValueType::FUNCTION)
     return JSValue::undefined();
-  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   JSArray result_arr{};
   for (int i = 0; i < arr->internal->size(); i++) {
     result_arr.internal->push_back(JSValueBinding::with_value(
@@ -98,7 +98,7 @@ JSValue JSArray::filter_impl(JSValue thisArg, std::vector<JSValue> &args) {
   JSValue f = args[0];
   if (f.type() != JSValueType::FUNCTION)
     return JSValue::undefined();
-  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   JSArray result_arr{};
   for (int i = 0; i < arr->internal->size(); i++) {
     if (f({(*arr->internal)[i], JSValue{static_cast<double>(i)}})
@@ -112,7 +112,7 @@ JSValue JSArray::filter_impl(JSValue thisArg, std::vector<JSValue> &args) {
 JSValue JSArray::reduce_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
     return JSValue::undefined();
-  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
 
   if (args[0].type() != JSValueType::FUNCTION)
     return JSValue::undefined();
@@ -143,7 +143,7 @@ JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (args.size() > 0 && args[0].type() == JSValueType::STRING) {
     delimiter = args[0].coerce_to_string();
   }
-  auto arr = std::get<JSValueType::ARRAY>(*thisArg.internal);
+  auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   for (auto v : *arr->internal) {
     result += v.get().coerce_to_string() + delimiter;
   }

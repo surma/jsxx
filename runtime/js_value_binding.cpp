@@ -16,14 +16,14 @@ JSValueBinding JSValueBinding::with_getter_setter(JSValue getter,
   b.getter = std::optional{[=](JSValueBinding b) {
     if (getter.type() != JSValueType::FUNCTION)
       return JSValue::undefined();
-    auto f = std::get<JSValueType::FUNCTION>(*getter.internal);
+    auto f = std::get<JSValueType::FUNCTION>(*getter.value);
     std::vector<JSValue> params{};
     return f.call(b.get_parent(), params);
   }};
   b.setter = std::optional{[=](JSValueBinding b, JSValue v) {
     if (setter.type() != JSValueType::FUNCTION)
       return;
-    auto f = std::get<JSValueType::FUNCTION>(*setter.internal);
+    auto f = std::get<JSValueType::FUNCTION>(*setter.value);
     std::vector<JSValue> params{v};
     f.call(b.get_parent(), params);
   }};

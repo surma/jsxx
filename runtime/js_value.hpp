@@ -103,7 +103,7 @@ public:
   bool is_undefined() const;
   double &get_number();
 
-  shared_ptr<Box> internal;
+  shared_ptr<Box> value;
   optional<shared_ptr<JSValue>> parent_value;
 };
 

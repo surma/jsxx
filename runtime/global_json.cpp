@@ -152,13 +152,13 @@ static std::string json_stringify_string(JSString v) {
 
 static std::string json_stringify_value(JSValue v) {
   if (v.type() == JSValueType::ARRAY)
-    return json_stringify_array(*std::get<JSValueType::ARRAY>(*v.internal));
+    return json_stringify_array(*std::get<JSValueType::ARRAY>(*v.value));
   if (v.type() == JSValueType::OBJECT)
-    return json_stringify_object(*std::get<JSValueType::OBJECT>(*v.internal));
+    return json_stringify_object(*std::get<JSValueType::OBJECT>(*v.value));
   if (v.type() == JSValueType::NUMBER)
-    return json_stringify_number(std::get<JSValueType::NUMBER>(*v.internal));
+    return json_stringify_number(std::get<JSValueType::NUMBER>(*v.value));
   if (v.type() == JSValueType::STRING)
-    return json_stringify_string(std::get<JSValueType::STRING>(*v.internal));
+    return json_stringify_string(std::get<JSValueType::STRING>(*v.value));
   if (v.type() == JSValueType::BOOL)
     return v.coerce_to_string();
   return std::string("<IDK MAN>");

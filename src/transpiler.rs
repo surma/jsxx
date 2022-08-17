@@ -234,7 +234,7 @@ impl Transpiler {
             .init
             .as_ref()
             .map(|init| -> Result<String> {
-                Ok(format!(" = *({}).internal", self.transpile_expr(&init)?))
+                Ok(format!(" = *({}).value", self.transpile_expr(&init)?))
             })
             .unwrap_or(Ok("".to_string()))?;
         Ok(format!("JSValue {}{}", ident.sym, init))
@@ -316,7 +316,7 @@ impl Transpiler {
             AssignOp::Assign => "=",
             _ => return Err(anyhow!("Unsupported assign operation {:?}", assign_expr.op)),
         };
-        Ok(format!("{} {} *({}).internal", left, op, right))
+        Ok(format!("{} {} *({}).value", left, op, right))
     }
 
     fn transpile_this_expr(&mut self, _this_expr: &ThisExpr) -> Result<String> {
@@ -587,7 +587,7 @@ impl Transpiler {
         let transpiled_args: Vec<Result<String>> = call_expr
             .args
             .iter()
-            .map(|arg| Ok(format!("*({}).internal", self.transpile_expr(&arg.expr)?)))
+            .map(|arg| Ok(format!("*({}).value", self.transpile_expr(&arg.expr)?)))
             .collect();
         let arg_expr = Result::<Vec<String>>::from_iter(transpiled_args)?.join(",");
         Ok(format!("{}({{{}}})", callee, arg_expr))
