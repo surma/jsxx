@@ -31,24 +31,28 @@ std::vector<std::pair<JSValue, JSValue>> JSArray_prototype{
     {JSValue{"filter"}, JSValue::new_function(&JSArray::filter_impl)},
     {JSValue{"reduce"}, JSValue::new_function(&JSArray::reduce_impl)},
     {JSValue{"join"}, JSValue::new_function(&JSArray::join_impl)},
+
 };
 
 JSArray::JSArray() : JSBase(), internal{new std::vector<JSValue>{}} {
   for (const auto &entry : JSArray_prototype) {
     this->properties.push_back(entry);
   }
-  auto length_prop = JSValue{0.0};
   std::vector<JSValue> *data = &(*this->internal);
-  // FIXME
-  // length_prop.getter = std::optional{[=](JSValue b) {
-  //   return JSValue{static_cast<double>(data->size())};
-  // }};
-  // length_prop.setter = std::optional{[=](JSValue b, JSValue v) {
-  //   if (v.type() != JSValueType::NUMBER)
-  //     return;
-  //   data->resize(static_cast<size_t>(v.coerce_to_double()),
-  //                JSValue::undefined());
-  // }};
+  auto length_prop = JSValue::with_getter_setter(
+      JSValue::new_function(
+          [=](JSValue thisArg, std::vector<JSValue> &args) mutable -> JSValue {
+            return JSValue{static_cast<double>(data->size())};
+          }),
+      JSValue::new_function(
+          [=](JSValue thisArg, std::vector<JSValue> &args) mutable -> JSValue {
+            if (args.size() < 1 || args[0].type() != JSValueType::NUMBER)
+              return JSValue::undefined();
+            JSValue v = args[0];
+            data->resize(static_cast<size_t>(v.coerce_to_double()),
+                         JSValue::undefined());
+            return JSValue::undefined();
+          }));
   this->properties.push_back({JSValue{"length"}, length_prop});
 };
 

@@ -44,6 +44,9 @@ class JSValue {
                            std::shared_ptr<JSArray>, std::shared_ptr<JSObject>,
                            JSFunction, std::shared_ptr<JSObject>>;
 
+  using Getter = std::function<JSValue(JSValue)>;
+  using Setter = std::function<void(JSValue, JSValue)>;
+
 public:
   JSValue();
   JSValue(bool v);
@@ -89,6 +92,7 @@ public:
   static JSValue new_generator_function(CoroutineFunc gen_f);
   static JSValue undefined();
   static JSValue iterator_from_next_func(JSValue next_func);
+  static JSValue with_getter_setter(JSValue getter, JSValue setter);
 
   JSValue get_property(const JSValue key);
   JSValue apply(JSValue thisArg, std::vector<JSValue> args);
@@ -101,9 +105,14 @@ public:
   bool is_undefined() const;
   double &get_number();
   void set_parent(JSValue parent_value);
+  JSValue get_parent();
+  const Box &boxed_value() const;
 
   shared_ptr<Box> value;
   optional<shared_ptr<JSValue>> parent_value;
+
+  std::optional<Getter> getter = std::nullopt;
+  std::optional<Setter> setter = std::nullopt;
 };
 
 // TODO: Move me primitives?

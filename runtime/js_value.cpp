@@ -274,6 +274,25 @@ JSValue JSValue::get_property(const JSValue key) {
   return v;
 }
 
+JSValue JSValue::with_getter_setter(JSValue getter, JSValue setter) {
+  JSValue b{};
+  b.getter = std::optional{[=](JSValue v) {
+    if (getter.type() != JSValueType::FUNCTION)
+      return JSValue::undefined();
+    auto f = std::get<JSValueType::FUNCTION>(*getter.value);
+    std::vector<JSValue> params{};
+    return f.call(v.get_parent(), params);
+  }};
+  b.setter = std::optional{[=](JSValue v, JSValue new_v) {
+    if (setter.type() != JSValueType::FUNCTION)
+      return;
+    auto f = std::get<JSValueType::FUNCTION>(*setter.value);
+    std::vector<JSValue> params{new_v};
+    f.call(v.get_parent(), params);
+  }};
+  return b;
+}
+
 JSValueType JSValue::type() const {
   return static_cast<JSValueType>(this->value->index());
 }
@@ -355,6 +374,18 @@ JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
 
 void JSValue::set_parent(JSValue parent) {
   this->parent_value = std::optional{std::make_shared<JSValue>(parent)};
+}
+
+JSValue JSValue::get_parent() {
+  return *this->parent_value.value_or(
+      std::make_shared<JSValue>(JSValue::undefined()));
+}
+
+const JSValue::Box &JSValue::boxed_value() const {
+  if (this->getter.has_value()) {
+    return (*this->getter)(*this).boxed_value();
+  }
+  return *this->value;
 }
 
 JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}
