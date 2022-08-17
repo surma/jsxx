@@ -6,20 +6,26 @@ JSValue JSUndefined::operator==(JSValue &other) {
   return JSValue{other.is_undefined()};
 }
 
-JSValue JSBase::get_property(JSValue key) {
-  return this->get_property_slot(key).get();
+JSValue JSBase::get_property(JSValue key, JSValue parent) {
+  return this->get_property_from_list(this->properties, key, parent)
+      .value_or(JSValue::undefined);
 }
 
-JSValueBinding JSBase::get_property_slot(JSValue key) {
-  auto obj =
-      std::find_if(this->properties.begin(), this->properties.end(),
-                   [&](std::pair<JSValue, JSValueBinding> &item) -> bool {
-                     return (item.first == key).coerce_to_bool();
-                   });
-  if (obj == this->properties.end()) {
-    return JSValueBinding::with_value(JSValue::undefined());
+std::optional<JSValue> JSBase::get_property_from_list(
+    const std::vector<std::pair<JSValue, JSValue>> &list, JSValue key,
+    JSValue parent) {
+  auto obj = std::find_if(list.begin(), list.end(),
+                          [&](const std::pair<JSValue, JSValue> &item) -> bool {
+                            return (item.first == key).coerce_to_bool();
+                          });
+  if (obj == list.end()) {
+    return std::nullopt;
   }
-  return (*obj).second;
+  JSValue v = (*obj).second;
+  if (v.getter.has_value()) {
+    *v.value = (*v.getter)(parent).boxed_value();
+  }
+  return std::optional{v};
 }
 
 JSBool::JSBool(bool v) : JSBase(), internal{v} {};
@@ -30,40 +36,40 @@ JSString::JSString(const char *v) : JSBase(), internal{std::string(v)} {};
 
 JSString::JSString(std::string v) : JSBase(), internal{v} {};
 
-std::vector<std::pair<JSValue, JSValueBinding>> JSArray_prototype{
-    {JSValue{"push"},
-     JSValueBinding::with_value(JSValue::new_function(&JSArray::push_impl))},
-    {JSValue{"map"},
-     JSValueBinding::with_value(JSValue::new_function(&JSArray::map_impl))},
-    {JSValue{"filter"},
-     JSValueBinding::with_value(JSValue::new_function(&JSArray::filter_impl))},
-    {JSValue{"reduce"},
-     JSValueBinding::with_value(JSValue::new_function(&JSArray::reduce_impl))},
-    {JSValue{"join"},
-     JSValueBinding::with_value(JSValue::new_function(&JSArray::join_impl))},
+std::vector<std::pair<JSValue, JSValue>> JSArray_prototype{
+    {JSValue{"push"}, JSValue::new_function(&JSArray::push_impl)},
+    {JSValue{"map"}, JSValue::new_function(&JSArray::map_impl)},
+    {JSValue{"filter"}, JSValue::new_function(&JSArray::filter_impl)},
+    {JSValue{"reduce"}, JSValue::new_function(&JSArray::reduce_impl)},
+    {JSValue{"join"}, JSValue::new_function(&JSArray::join_impl)},
+
 };
 
-JSArray::JSArray() : JSBase(), internal{new std::vector<JSValueBinding>{}} {
+JSArray::JSArray() : JSBase(), internal{new std::vector<JSValue>{}} {
   for (const auto &entry : JSArray_prototype) {
     this->properties.push_back(entry);
   }
-  auto length_prop = JSValueBinding::with_value(JSValue{0.0});
-  std::vector<JSValueBinding> *data = &(*this->internal);
-  length_prop.getter = std::optional{[=](JSValueBinding b) {
-    return JSValue{static_cast<double>(data->size())};
-  }};
-  length_prop.setter = std::optional{[=](JSValueBinding b, JSValue v) {
-    if (v.type() != JSValueType::NUMBER)
-      return;
-    data->resize(static_cast<size_t>(v.coerce_to_double()),
-                 JSValueBinding::with_value(JSValue{}));
-  }};
+  std::vector<JSValue> *data = &(*this->internal);
+  auto length_prop = JSValue::with_getter_setter(
+      JSValue::new_function(
+          [=](JSValue thisArg, std::vector<JSValue> &args) mutable -> JSValue {
+            return JSValue{static_cast<double>(data->size())};
+          }),
+      JSValue::new_function(
+          [=](JSValue thisArg, std::vector<JSValue> &args) mutable -> JSValue {
+            if (args.size() < 1 || args[0].type() != JSValueType::NUMBER)
+              return JSValue::undefined();
+            JSValue v = args[0];
+            data->resize(static_cast<size_t>(v.coerce_to_double()),
+                         JSValue::undefined());
+            return JSValue::undefined();
+          }));
   this->properties.push_back({JSValue{"length"}, length_prop});
 };
 
 JSArray::JSArray(std::vector<JSValue> data) : JSArray() {
   for (auto v : data) {
-    this->internal->push_back(JSValueBinding::with_value(v));
+    this->internal->push_back(v);
   }
 }
 
@@ -72,7 +78,7 @@ JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {
     return JSValue::undefined();
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   for (auto v : args) {
-    arr->internal->push_back(JSValueBinding::with_value(v));
+    arr->internal->push_back(v);
   }
   return JSValue::undefined();
 }
@@ -86,8 +92,8 @@ JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   JSArray result_arr{};
   for (int i = 0; i < arr->internal->size(); i++) {
-    result_arr.internal->push_back(JSValueBinding::with_value(
-        f({(*arr->internal)[i].get(), JSValue{static_cast<double>(i)}})));
+    result_arr.internal->push_back(
+        f({(*arr->internal)[i], JSValue{static_cast<double>(i)}}));
   }
   return JSValue{result_arr};
 }
@@ -145,45 +151,35 @@ JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {
   }
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   for (auto v : *arr->internal) {
-    result += v.get().coerce_to_string() + delimiter;
+    result += v.coerce_to_string() + delimiter;
   }
   result = result.substr(0, result.size() - delimiter.size());
   return JSValue{result};
 }
 
-JSValueBinding JSArray::get_property_slot(const JSValue key) {
+JSValue JSArray::get_property(const JSValue key, JSValue parent) {
   if (key.type() == JSValueType::NUMBER) {
     auto idx = static_cast<size_t>(key.coerce_to_double());
     if (idx >= this->internal->size())
-      return JSValueBinding::with_value(JSValue::undefined());
+      return JSValue::undefined();
     return (*this->internal)[idx];
   }
-  return JSBase::get_property_slot(key);
+  return JSBase::get_property(key, parent);
 }
 
 JSObject::JSObject()
-    : JSBase(), internal{
-                    new std::vector<std::pair<JSValue, JSValueBinding>>{}} {};
-JSObject::JSObject(std::vector<std::pair<JSValue, JSValue>> data) : JSObject() {
-  for (auto v : data) {
-    this->internal->push_back({v.first, JSValueBinding::with_value(v.second)});
-  }
-};
+    : JSBase(), internal{new std::vector<std::pair<JSValue, JSValue>>{}} {};
 
-JSObject::JSObject(std::vector<std::pair<JSValue, JSValueBinding>> data)
-    : JSObject() {
+JSObject::JSObject(std::vector<std::pair<JSValue, JSValue>> data) : JSObject() {
   *this->internal = data;
 };
 
-JSValueBinding JSObject::get_property_slot(const JSValue key) {
-  auto obj = std::find_if(this->internal->begin(), this->internal->end(),
-                          [=](std::pair<JSValue, JSValueBinding> &item) {
-                            return (item.first == key).coerce_to_bool();
-                          });
-  if (obj == this->internal->end()) {
-    return JSBase::get_property_slot(key);
+JSValue JSObject::get_property(const JSValue key, JSValue parent) {
+  auto v = this->get_property_from_list(*this->internal, key, parent);
+  if (v.has_value()) {
+    return v.value();
   }
-  return (*obj).second;
+  return JSBase::get_property(key, parent);
 }
 
 JSFunction::JSFunction(ExternFunc f) : JSBase(), internal{f} {};

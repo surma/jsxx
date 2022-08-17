@@ -57,7 +57,7 @@ static JSValue json_parse_object(const char **cur) {
     (*cur)++;
     eat_whitespace(cur);
     auto value = json_parse_value(cur);
-    obj.internal->push_back({key, JSValueBinding::with_value(value)});
+    obj.internal->push_back({key, value});
     eat_whitespace(cur);
     if (**cur == ',')
       (*cur)++;
@@ -73,7 +73,7 @@ static JSValue json_parse_array(const char **cur) {
   eat_whitespace(cur);
   while (**cur != ']') {
     auto value = json_parse_value(cur);
-    arr.internal->push_back(JSValueBinding::with_value(value));
+    arr.internal->push_back(value);
     eat_whitespace(cur);
     if (**cur == ',')
       (*cur)++;
@@ -121,7 +121,7 @@ static std::string json_stringify_object(JSObject v) {
   for (auto v : *v.internal) {
     result += json_stringify_value(v.first);
     result += ":";
-    result += json_stringify_value(v.second.get());
+    result += json_stringify_value(v.second);
     result += ",";
   }
   result = result.substr(0, result.size() - 1);
@@ -132,7 +132,7 @@ static std::string json_stringify_object(JSObject v) {
 static std::string json_stringify_array(JSArray v) {
   std::string result = "[";
   for (auto v : *v.internal) {
-    result += json_stringify_value(v.get());
+    result += json_stringify_value(v);
     result += ",";
   }
   if (v.internal->size() >= 1) {
@@ -170,10 +170,8 @@ static JSValue json_stringify(JSValue thisArg, std::vector<JSValue> &args) {
 
 JSValue create_JSON_global() {
   JSValue global = JSValue::new_object(
-      {{JSValue{"parse"},
-        JSValueBinding::with_value(JSValue::new_function(&json_parse))},
-       {JSValue{"stringify"},
-        JSValueBinding::with_value(JSValue::new_function(&json_stringify))}});
+      {{JSValue{"parse"}, JSValue::new_function(&json_parse)},
+       {JSValue{"stringify"}, JSValue::new_function(&json_stringify)}});
 
   return global;
 }

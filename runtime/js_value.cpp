@@ -47,15 +47,11 @@ JSValue::JSValue(JSArray v)
                     shared_ptr<JSArray>{new JSArray{v}}}},
       parent_value{} {};
 
-JSValue::JSValue(JSValueBinding v)
-    : value{new Box{*v.get().value}}, parent_value{} {};
-
 JSValue::JSValue(Box v) : value{new Box{v}}, parent_value{} {};
 
 JSValue JSValue::undefined() { return JSValue{}; }
 
-JSValue
-JSValue::new_object(std::vector<std::pair<JSValue, JSValueBinding>> pairs) {
+JSValue JSValue::new_object(std::vector<std::pair<JSValue, JSValue>> pairs) {
   return JSValue{JSObject{pairs}};
 }
 
@@ -85,10 +81,8 @@ JSValue JSValue::new_generator_function(CoroutineFunc gen_f) {
           auto v = corot->value().promise().value;
           return JSValue::new_object(
               {{JSValue{"value"},
-                JSValueBinding::with_value(*v.value_or(
-                    std::make_shared<JSValue>(JSValue::undefined())))},
-               {JSValue{"done"},
-                JSValueBinding::with_value(JSValue{!v.has_value()})}});
+                *v.value_or(std::make_shared<JSValue>(JSValue::undefined()))},
+               {JSValue{"done"}, JSValue{!v.has_value()}}});
         }));
   });
 }
@@ -132,13 +126,16 @@ JSValue JSValue::operator--(int) {
 }
 
 JSValue JSValue::operator=(const Box &other) {
+  if (this->setter.has_value()) {
+    return (*this->setter)(*this, {other});
+  }
   *this->value = other;
   return other;
 }
 
 JSValue JSValue::operator!() { return JSValue{!this->coerce_to_bool()}; }
 
-JSValue JSValue::operator==(const JSValue other) {
+JSValue JSValue::operator==(const JSValue other) const {
   if (this->type() == JSValueType::NUMBER) {
     return JSValue{std::get<JSValueType::NUMBER>(*this->value).internal ==
                    other.coerce_to_double()};
@@ -167,9 +164,11 @@ JSValue JSValue::operator==(const JSValue other) {
 }
 
 JSValue JSValue::operator<(const JSValue other) {
-  if (this->type() == JSValueType::NUMBER) {
-    return JSValue{std::get<JSValueType::NUMBER>(*this->value).internal <
-                   other.coerce_to_double()};
+  JSValue v1{this->boxed_value()};
+  JSValue v2{other.boxed_value()};
+  if (v1.type() == JSValueType::NUMBER) {
+    return JSValue{std::get<JSValueType::NUMBER>(*v1.value).internal <
+                   v2.coerce_to_double()};
   }
   return JSValue{false};
 }
@@ -227,7 +226,7 @@ JSValue JSValue::operator%(JSValue other) {
 }
 
 JSValue JSValue::operator[](const JSValue key) {
-  return this->get_property(key);
+  return this->get_property(key, *this);
 }
 
 JSValue JSValue::operator[](const char *index) {
@@ -248,40 +247,58 @@ JSIterator JSValue::begin() { return JSIterator{(*this)[iterator_symbol]({})}; }
 
 JSIterator JSValue::end() { return JSIterator::end_marker(); }
 
-JSValue JSValue::get_property(const JSValue key) {
-  return this->get_property_slot(key).get();
-}
-
-JSValueBinding JSValue::get_property_slot(const JSValue key) {
-  JSValueBinding v;
+JSValue JSValue::get_property(const JSValue key, JSValue parent) {
+  JSValue v;
   switch (this->type()) {
   case JSValueType::UNDEFINED:
-    v = JSValueBinding::with_value(JSValue::undefined());
+    v = JSValue::undefined();
     break;
   case JSValueType::BOOL:
-    v = std::get<JSValueType::BOOL>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::BOOL>(*this->value).get_property(key, parent);
     break;
   case JSValueType::NUMBER:
-    v = std::get<JSValueType::NUMBER>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::NUMBER>(*this->value).get_property(key, parent);
     break;
   case JSValueType::STRING:
-    v = std::get<JSValueType::STRING>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::STRING>(*this->value).get_property(key, parent);
     break;
   case JSValueType::ARRAY:
-    v = std::get<JSValueType::ARRAY>(*this->value)->get_property_slot(key);
+    v = std::get<JSValueType::ARRAY>(*this->value)->get_property(key, parent);
     break;
   case JSValueType::OBJECT:
-    v = std::get<JSValueType::OBJECT>(*this->value)->get_property_slot(key);
+
+    v = std::get<JSValueType::OBJECT>(*this->value)->get_property(key, parent);
     break;
   case JSValueType::FUNCTION:
-    v = std::get<JSValueType::FUNCTION>(*this->value).get_property_slot(key);
+    v = std::get<JSValueType::FUNCTION>(*this->value).get_property(key, parent);
     break;
+  // TODO remove me?!
   case JSValueType::EXCEPTION:
-    v = std::get<JSValueType::EXCEPTION>(*this->value)->get_property_slot(key);
+    v = std::get<JSValueType::EXCEPTION>(*this->value)
+            ->get_property(key, parent);
     break;
   };
   v.set_parent(*this);
   return v;
+}
+
+JSValue JSValue::with_getter_setter(JSValue getter, JSValue setter) {
+  JSValue b{};
+  b.getter = std::optional{[=](JSValue v) -> JSValue {
+    if (getter.type() != JSValueType::FUNCTION)
+      return JSValue::undefined();
+    auto f = std::get<JSValueType::FUNCTION>(*getter.value);
+    std::vector<JSValue> params{};
+    return f.call(v, params);
+  }};
+  b.setter = std::optional{[=](JSValue v, JSValue new_v) -> JSValue {
+    if (setter.type() != JSValueType::FUNCTION)
+      return JSValue::undefined();
+    auto f = std::get<JSValueType::FUNCTION>(*setter.value);
+    std::vector<JSValue> params{new_v};
+    return f.call(v, params);
+  }};
+  return b;
 }
 
 JSValueType JSValue::type() const {
@@ -363,6 +380,17 @@ JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
   return f.call(thisArg, args);
 }
 
+void JSValue::set_parent(JSValue parent) {
+  this->parent_value = std::optional{std::make_shared<JSValue>(parent)};
+}
+
+JSValue JSValue::get_parent() {
+  return *this->parent_value.value_or(
+      std::make_shared<JSValue>(JSValue::undefined()));
+}
+
+const JSValue::Box &JSValue::boxed_value() const { return *this->value; }
+
 JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}
 
 JSIterator::JSIterator(JSValue val) {
@@ -373,8 +401,8 @@ JSIterator JSIterator::end_marker() {
   JSIterator it{};
   it.last_value =
       std::optional{shared_ptr<JSValue>{new JSValue{JSValue::new_object({
-          {JSValue{"value"}, JSValueBinding::with_value(JSValue::undefined())},
-          {JSValue{"done"}, JSValueBinding::with_value(JSValue{true})},
+          {JSValue{"value"}, JSValue::undefined()},
+          {JSValue{"done"}, JSValue{true}},
       })}}};
   return it;
 }
@@ -414,9 +442,8 @@ JSValue JSIterator::value() {
 JSValue JSValue::iterator_from_next_func(JSValue next_func) {
   return JSValue::new_object(
       {{iterator_symbol,
-        JSValueBinding::with_value(JSValue::new_function(
+        JSValue::new_function(
             [=](JSValue thisArg, std::vector<JSValue> &args) mutable {
-              return JSValue::new_object(
-                  {{JSValue{"next"}, JSValueBinding::with_value(next_func)}});
-            }))}});
+              return JSValue::new_object({{JSValue{"next"}, next_func}});
+            })}});
 };

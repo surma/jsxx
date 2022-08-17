@@ -76,7 +76,6 @@ fn cpp_to_binary(
                 "runtime/global_symbol.cpp",
                 "runtime/global_io.cpp",
                 "runtime/js_primitives.cpp",
-                "runtime/js_value_binding.cpp",
                 "runtime/js_value.cpp",
             ]
             .into_iter(),

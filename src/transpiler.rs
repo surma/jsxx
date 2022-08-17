@@ -5,7 +5,6 @@ use swc_ecma_ast::*;
 
 pub struct Transpiler {
     pub globals: Vec<crate::globals::Global>,
-    is_lhs: bool,
     is_generator: bool,
 }
 
@@ -13,7 +12,6 @@ impl Transpiler {
     pub fn new() -> Transpiler {
         Transpiler {
             globals: vec![],
-            is_lhs: false,
             is_generator: false,
         }
     }
@@ -234,7 +232,10 @@ impl Transpiler {
             .init
             .as_ref()
             .map(|init| -> Result<String> {
-                Ok(format!(" = *({}).value", self.transpile_expr(&init)?))
+                Ok(format!(
+                    " = ({}).boxed_value()",
+                    self.transpile_expr(&init)?
+                ))
             })
             .unwrap_or(Ok("".to_string()))?;
         Ok(format!("JSValue {}{}", ident.sym, init))
@@ -296,7 +297,6 @@ impl Transpiler {
     }
 
     fn transpile_assign_expr(&mut self, assign_expr: &AssignExpr) -> Result<String> {
-        self.is_lhs = true;
         let left = match &assign_expr.left {
             PatOrExpr::Expr(expr) => self.transpile_expr(expr)?,
             PatOrExpr::Pat(pat) => match pat.as_ref() {
@@ -310,13 +310,12 @@ impl Transpiler {
                 }
             },
         };
-        self.is_lhs = false;
         let right = self.transpile_expr(&assign_expr.right)?;
         let op = match assign_expr.op {
             AssignOp::Assign => "=",
             _ => return Err(anyhow!("Unsupported assign operation {:?}", assign_expr.op)),
         };
-        Ok(format!("{} {} *({}).value", left, op, right))
+        Ok(format!("{} {} ({}).boxed_value()", left, op, right))
     }
 
     fn transpile_this_expr(&mut self, _this_expr: &ThisExpr) -> Result<String> {
@@ -400,10 +399,7 @@ impl Transpiler {
 
     fn transpile_prop_method(&mut self, method: &MethodProp) -> Result<String> {
         Ok(format!(
-            r#"{{
-                {},
-                JSValueBinding::with_value({})
-            }}"#,
+            "{{ {}, {} }}",
             self.transpile_prop_name(&method.key)?,
             self.transpile_function(&method.function)?
         ))
@@ -417,7 +413,7 @@ impl Transpiler {
         Ok(format!(
             r#"{{
                 {},
-                JSValueBinding::with_getter_setter(
+                JSValue::with_getter_setter(
                     JSValue::undefined(),
                     JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
                         JSValue {} = args[0];
@@ -436,7 +432,7 @@ impl Transpiler {
         Ok(format!(
             r#"{{
                 {},
-                JSValueBinding::with_getter_setter(
+                JSValue::with_getter_setter(
                     JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable -> JSValue {{
                         {}
                         return JSValue::undefined();
@@ -451,17 +447,14 @@ impl Transpiler {
 
     fn transpile_prop_keyvalue(&mut self, key_value: &KeyValueProp) -> Result<String> {
         Ok(format!(
-            "{{{}, JSValueBinding::with_value({})}}",
+            "{{{}, {}}}",
             self.transpile_prop_name(&key_value.key)?,
             self.transpile_expr(&key_value.value)?
         ))
     }
 
     fn transpile_prop_shorthand(&mut self, ident: &Ident) -> Result<String> {
-        Ok(format!(
-            r#"{{JSValue{{"{0}"}}, JSValueBinding::with_value({0})}}"#,
-            ident.sym
-        ))
+        Ok(format!(r#"{{JSValue{{"{0}"}}, {0}}}"#, ident.sym))
     }
 
     fn transpile_prop_name(&mut self, prop_name: &PropName) -> Result<String> {
@@ -570,11 +563,7 @@ impl Transpiler {
             }
             _ => return Err(anyhow!("Unsupported member prop {:?}", member_expr.prop)),
         };
-        Ok(if self.is_lhs {
-            format!(r#"{}.get_property_slot({})"#, obj, prop)
-        } else {
-            format!(r#"{}[{}]"#, obj, prop)
-        })
+        Ok(format!(r#"{}[{}]"#, obj, prop))
     }
 
     fn transpile_call_expr(&mut self, call_expr: &CallExpr) -> Result<String> {
@@ -587,7 +576,12 @@ impl Transpiler {
         let transpiled_args: Vec<Result<String>> = call_expr
             .args
             .iter()
-            .map(|arg| Ok(format!("*({}).value", self.transpile_expr(&arg.expr)?)))
+            .map(|arg| {
+                Ok(format!(
+                    "({}).boxed_value()",
+                    self.transpile_expr(&arg.expr)?
+                ))
+            })
             .collect();
         let arg_expr = Result::<Vec<String>>::from_iter(transpiled_args)?.join(",");
         Ok(format!("{}({{{}}})", callee, arg_expr))
