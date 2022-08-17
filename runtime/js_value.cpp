@@ -270,8 +270,7 @@ JSValue JSValue::get_property(const JSValue key) {
     v = std::get<JSValueType::EXCEPTION>(*this->value)->get_property(key);
     break;
   };
-  // FIXME
-  // v.set_parent(*this);
+  v.set_parent(*this);
   return v;
 }
 
@@ -352,6 +351,10 @@ JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
   }
   JSFunction f = std::get<JSValueType::FUNCTION>(*this->value);
   return f.call(thisArg, args);
+}
+
+void JSValue::set_parent(JSValue parent) {
+  this->parent_value = std::optional{std::make_shared<JSValue>(parent)};
 }
 
 JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}

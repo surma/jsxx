@@ -100,6 +100,7 @@ public:
 
   bool is_undefined() const;
   double &get_number();
+  void set_parent(JSValue parent_value);
 
   shared_ptr<Box> value;
   optional<shared_ptr<JSValue>> parent_value;
