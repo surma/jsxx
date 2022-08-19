@@ -65,11 +65,19 @@ impl Transpiler {
                 #include <experimental/coroutine>
                 #include "runtime/js_value.hpp"
 
-                int main() {{
+                int prog() {{
                     {inits}
                     {global_exprs}
                     {program}
                     return 0;
+                }}
+
+                int main() {{
+                    try {{
+                        prog();
+                    }} catch(std::string e) {{
+                        printf("EXCEPTION: %s\n", e.c_str());
+                    }}
                 }}
             "#,
             additional_includes = additional_includes,
@@ -549,6 +557,7 @@ impl Transpiler {
             "JSValue::new_function([=](JSValue thisArg, std::vector<JSValue>& args) mutable {{
                 {}
                 {}
+                return JSValue::undefined();
             }})",
             param_destructure, body
         ))

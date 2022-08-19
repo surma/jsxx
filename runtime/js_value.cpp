@@ -374,7 +374,7 @@ bool JSValue::coerce_to_bool() const {
 
 JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
   if (this->type() != JSValueType::FUNCTION) {
-    return JSValue::undefined(); // FIXME
+    throw std::string("Calling a non-function");
   }
   JSFunction f = std::get<JSValueType::FUNCTION>(*this->value);
   return f.call(thisArg, args);
@@ -440,10 +440,10 @@ JSValue JSIterator::value() {
 }
 
 JSValue JSValue::iterator_from_next_func(JSValue next_func) {
-  return JSValue::new_object(
-      {{iterator_symbol,
-        JSValue::new_function(
-            [=](JSValue thisArg, std::vector<JSValue> &args) mutable {
-              return JSValue::new_object({{JSValue{"next"}, next_func}});
-            })}});
+  auto obj = JSValue::new_object({{JSValue{"next"}, next_func}});
+  obj[iterator_symbol] = JSValue::new_function(
+      [=](JSValue thisArg, std::vector<JSValue> &args) mutable -> JSValue {
+        return obj;
+      });
+  return obj;
 };
