@@ -219,7 +219,6 @@ JSValue JSObject::get_property(const JSValue key, JSValue parent) {
   if (proto_v.has_value()) {
     return proto_v.value();
   }
-
   return JSValue::with_getter_setter(
       JSValue::new_function(
           [](JSValue thisArg, std::vector<JSValue> &args) mutable -> JSValue {

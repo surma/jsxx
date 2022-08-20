@@ -266,7 +266,6 @@ JSValue JSValue::get_property(const JSValue key, JSValue parent) {
     v = std::get<JSValueType::ARRAY>(*this->value)->get_property(key, parent);
     break;
   case JSValueType::OBJECT:
-
     v = std::get<JSValueType::OBJECT>(*this->value)->get_property(key, parent);
     break;
   case JSValueType::FUNCTION:
@@ -441,9 +440,10 @@ JSValue JSIterator::value() {
 
 JSValue JSValue::iterator_from_next_func(JSValue next_func) {
   auto obj = JSValue::new_object({{JSValue{"next"}, next_func}});
-  obj[iterator_symbol] = JSValue::new_function(
-      [=](JSValue thisArg, std::vector<JSValue> &args) mutable -> JSValue {
+  obj[iterator_symbol] =
+      JSValue::new_function([=](JSValue thisArg,
+                                std::vector<JSValue> &args) mutable -> JSValue {
         return obj;
-      });
+      }).boxed_value();
   return obj;
 };

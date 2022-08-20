@@ -542,20 +542,6 @@ mod test {
     }
 
     #[test]
-    fn function_assign() -> Result<()> {
-        let output = compile_and_run(
-            r#"
-                let key = {};
-                let v = () => {};
-                v[key] = "hi";
-                IO.write_to_stdout(v[key]);
-            "#,
-        )?;
-        assert_eq!(output, "hi");
-        Ok(())
-    }
-
-    #[test]
     fn object_assign2() -> Result<()> {
         let output = compile_and_run(
             r#"
@@ -862,6 +848,12 @@ mod test {
             .spawn()?;
         let output = child.wait_with_output()?;
         std::fs::remove_file(&name)?;
+        if output.stderr.len() > 0 {
+            return Err(anyhow!(
+                "Program printed to stderr: {}",
+                String::from_utf8(output.stderr)?
+            ));
+        }
         Ok(String::from_utf8(output.stdout)?)
     }
 }
