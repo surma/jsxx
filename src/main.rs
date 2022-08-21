@@ -736,19 +736,18 @@ mod test {
         let output = compile_and_run(
             r#"
                 let it = {
-                    [Symbol.iterator]() {
-                        return {
-                            i: 0,
-                            next() {
-                                if(this.i > 4) {
-                                    return {done: true};
-                                }
-                                return {
-                                    value: this.i++,
-                                    done: false
-                                };
-                            }
+                    i: 0,
+                    next() {
+                        if(this.i > 4) {
+                            return {done: true};
                         }
+                        return {
+                            value: this.i++,
+                            done: false
+                        };
+                    },
+                    [Symbol.iterator]() {
+                        return this;
                     }
                 };
                 let arr = [];
