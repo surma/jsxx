@@ -5,6 +5,7 @@ use swc_ecma_ast::*;
 
 pub struct Transpiler {
     pub globals: Vec<crate::globals::Global>,
+    pub feature_exceptions: bool,
     is_generator: bool,
 }
 
@@ -13,6 +14,7 @@ impl Transpiler {
         Transpiler {
             globals: vec![],
             is_generator: false,
+            feature_exceptions: true,
         }
     }
 
@@ -98,9 +100,63 @@ impl Transpiler {
             Stmt::ForOf(for_of_stmt) => self.transpile_for_of_stmt(for_of_stmt)?,
             Stmt::While(while_stmt) => self.transpile_while_stmt(while_stmt)?,
             Stmt::Break(break_stmt) => self.transpile_break_stmt(break_stmt)?,
+            Stmt::Try(try_stmt) => self.transpile_try_stmt(try_stmt)?,
+            Stmt::Throw(throw_stmt) => self.transpile_throw_stmt(throw_stmt)?,
             _ => return Err(anyhow!("Unsupported statemt: {:?}", stmt)),
         };
         Ok(format!("{};", transpiled_stmt))
+    }
+
+    fn transpile_throw_stmt(&mut self, throw_stmt: &ThrowStmt) -> Result<String> {
+        let expr = self.transpile_expr(&throw_stmt.arg)?;
+        Ok(format!("throw {}", expr))
+    }
+
+    fn transpile_catch_clause(&mut self, catch_clause: &CatchClause) -> Result<String> {
+        let ident = catch_clause
+            .param
+            .as_ref()
+            .map(|pat| {
+                pat.as_ident()
+                    .map(|ident| format!("{}", ident.sym))
+                    .ok_or(anyhow!(
+                        "Only straight-up identifiers are supported as function parameters"
+                    ))
+            })
+            .transpose()?
+            .unwrap_or(format!("__unused"));
+        let body = self.transpile_block_stmt(&catch_clause.body)?;
+
+        Ok(format!(
+            r#"
+                catch(JSValue {}) {{
+                    {}
+                }}
+            "#,
+            ident, body
+        ))
+    }
+
+    fn transpile_try_stmt(&mut self, try_stmt: &TryStmt) -> Result<String> {
+        if try_stmt.finalizer.is_some() {
+            return Err(anyhow!("`finally` not supported yet"));
+        }
+        let block = self.transpile_block_stmt(&try_stmt.block)?;
+        let handler = self.transpile_catch_clause(
+            try_stmt
+                .handler
+                .as_ref()
+                .ok_or(anyhow!("Missing catch handler"))?,
+        )?;
+        Ok(format!(
+            r#"
+                try {{
+                    {}
+                }}
+                {}
+            "#,
+            block, handler
+        ))
     }
 
     fn transpile_for_of_stmt(&mut self, for_of_stmt: &ForOfStmt) -> Result<String> {

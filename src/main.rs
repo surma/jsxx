@@ -24,11 +24,15 @@ struct Args {
     #[clap(long = "emit-cpp", default_value_t = false, value_parser)]
     emit_cpp: bool,
 
+    /// Use C++ exceptions.
+    #[clap(long = "exceptions", default_value_t = true, value_parser)]
+    exceptions: bool,
+
     /// Extra flags to path to clang++
     extra_flags: Vec<String>,
 }
 
-fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
+fn js_to_cpp<T: AsRef<str>>(mut transpiler: transpiler::Transpiler, input: T) -> Result<String> {
     let syntax = Syntax::Es(EsConfig::default());
     let lexer = Lexer::new(
         syntax,
@@ -45,7 +49,6 @@ fn js_to_cpp<T: AsRef<str>>(input: T) -> Result<String> {
         .parse_module()
         .map_err(|err| anyhow!(format!("{:?}", err)))?;
 
-    let mut transpiler = transpiler::Transpiler::new();
     transpiler.globals.push(globals::io::io_global());
     transpiler.globals.push(globals::json::json_global());
     transpiler.globals.push(globals::symbol::symbol_global());
@@ -100,7 +103,9 @@ fn main() -> Result<()> {
     let mut input: String = String::new();
     std::io::stdin().read_to_string(&mut input)?;
 
-    let cpp_code = js_to_cpp(&input)?;
+    let mut transpiler = transpiler::Transpiler::new();
+    transpiler.feature_exceptions = args.exceptions;
+    let cpp_code = js_to_cpp(transpiler, &input)?;
 
     if args.emit_cpp {
         let (_status, stdout, _stderr) =
@@ -119,6 +124,8 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod test {
+    use crate::transpiler::Transpiler;
+
     use super::*;
     use anyhow::Result;
     use uuid::Uuid;
@@ -879,9 +886,25 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn exceptions() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                try {
+                    throw "y";
+                } catch(e) {
+                    IO.write_to_stdout(e);
+                }
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
-        let cpp = js_to_cpp(code)?;
+        let transpiler = Transpiler::new();
+        let cpp = js_to_cpp(transpiler, code)?;
         cpp_to_binary(
             cpp,
             name.clone(),
