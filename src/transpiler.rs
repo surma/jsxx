@@ -273,16 +273,25 @@ impl Transpiler {
     }
 
     fn transpile_yield_expr(&mut self, yield_expr: &YieldExpr) -> Result<String> {
-        if yield_expr.delegate {
-            return Err(anyhow!("No support for delegate yields yet."));
-        }
         let value = yield_expr
             .arg
             .as_ref()
             .map(|arg| self.transpile_expr(arg))
             .transpose()?
             .unwrap_or(format!("JSValue::undefined()"));
-        Ok(format!("co_yield {}", value))
+
+        if !yield_expr.delegate {
+            Ok(format!("co_yield {}", value))
+        } else {
+            Ok(format!(
+                r#"
+                    for(auto v : {}) {{
+                        co_yield v;
+                    }}
+                "#,
+                value
+            ))
+        }
     }
 
     fn transpile_update_expr(&mut self, update_expr: &UpdateExpr) -> Result<String> {

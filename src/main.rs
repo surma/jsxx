@@ -833,6 +833,52 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn generator_delegate_builtin() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function* gen() {
+                    yield* [1, 2];
+                    yield* [3, 4];
+                }
+                let arr = [];
+                for(let v of gen()) {
+                    arr.push(v)
+                }
+                let sum = arr.reduce((sum, c) => sum +c, 0);
+                IO.write_to_stdout(sum == 10 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
+    fn generator_delegate() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function* gen2() {
+                    yield 1;
+                    yield 2;
+                    yield 3;
+                    yield 4;
+                    return;
+                }
+                function* gen() {
+                    yield* gen2();
+                }
+                let arr = [];
+                for(let v of gen()) {
+                    arr.push(v)
+                }
+                let sum = arr.reduce((sum, c) => sum +c, 0);
+                IO.write_to_stdout(sum == 10 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
     fn compile_and_run<T: AsRef<str>>(code: T) -> Result<String> {
         let name = Uuid::new_v4().to_string();
         let cpp = js_to_cpp(code)?;
