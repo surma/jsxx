@@ -243,7 +243,9 @@ JSValue JSValue::operator()(std::vector<JSValue> args) {
   return this->apply(*this_arg_ptr, args);
 }
 
-JSIterator JSValue::begin() { return JSIterator{(*this)[iterator_symbol]({})}; }
+JSIterator JSValue::begin() {
+  return JSIterator{(*this)[iterator_symbol]({}), *this};
+}
 
 JSIterator JSValue::end() { return JSIterator::end_marker(); }
 
@@ -392,8 +394,10 @@ const JSValue::Box &JSValue::boxed_value() const { return *this->value; }
 
 JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}
 
-JSIterator::JSIterator(JSValue val) {
-  this->it = shared_ptr<JSValue>{new JSValue{val}};
+JSIterator::JSIterator(JSValue val) : it{std::make_shared<JSValue>(val)} {}
+
+JSIterator::JSIterator(JSValue val, JSValue parent) : JSIterator(val) {
+  this->parent = {std::make_shared<JSValue>(parent)};
 }
 
 JSIterator JSIterator::end_marker() {
@@ -410,8 +414,13 @@ JSValue JSIterator::operator*() { return this->value()["value"]; }
 
 JSIterator JSIterator::operator++() {
   if (!this->it->is_undefined()) {
-    this->last_value = std::optional{
-        shared_ptr<JSValue>{new JSValue{(*this->it)["next"]({})}}};
+    if (this->parent.has_value()) {
+      this->last_value = std::optional{std::make_shared<JSValue>(
+          (*this->it)["next"].apply(*this->parent.value(), {}))};
+    } else {
+      this->last_value =
+          std::optional{std::make_shared<JSValue>((*this->it)["next"]({}))};
+    }
   }
   return *this;
 }

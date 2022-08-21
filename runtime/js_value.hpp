@@ -120,6 +120,7 @@ class JSIterator {
 public:
   JSIterator();
   JSIterator(JSValue val);
+  JSIterator(JSValue val, JSValue parent);
   static JSIterator end_marker();
 
   JSValue operator*();
@@ -130,4 +131,5 @@ public:
 
   shared_ptr<JSValue> it;
   optional<shared_ptr<JSValue>> last_value = std::nullopt;
+  optional<shared_ptr<JSValue>> parent = std::nullopt;
 };

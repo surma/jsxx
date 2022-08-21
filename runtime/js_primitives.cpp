@@ -180,9 +180,10 @@ JSValue JSArray::iterator_impl(JSValue thisArg, std::vector<JSValue> &args) {
   auto gen = JSValue::new_generator_function(
       [=](JSValue thisArg,
           std::vector<JSValue> &args) mutable -> JSGeneratorAdapter {
-        if (thisArg.type() != JSValueType::ARRAY)
-          // TODO: Exception
-          co_return;
+        if (thisArg.type() != JSValueType::ARRAY) {
+          // FIXME This isn’t caught
+          throw std::string("Called array iterator with a non-array value");
+        }
         auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
         for (auto value : *arr->internal) {
           co_yield value;
