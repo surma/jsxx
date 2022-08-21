@@ -542,6 +542,19 @@ mod test {
     }
 
     #[test]
+    fn object_assign2() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let v = {};
+                v["marker"] = "hi";
+                IO.write_to_stdout(v.marker);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
     fn object_shorthand() -> Result<()> {
         let output = compile_and_run(
             r#"
@@ -723,9 +736,6 @@ mod test {
         let output = compile_and_run(
             r#"
                 let it = {
-                    [Symbol.iterator]() {
-                        return this;
-                    },
                     i: 0,
                     next() {
                         if(this.i > 4) {
@@ -735,6 +745,9 @@ mod test {
                             value: this.i++,
                             done: false
                         };
+                    },
+                    [Symbol.iterator]() {
+                        return this;
                     }
                 };
                 let arr = [];
@@ -746,6 +759,54 @@ mod test {
             "#,
         )?;
         assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
+    fn iterator_array() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                let arr = [];
+                for(let v of [1,2,3,4]) {
+                    arr.push(v)
+                }
+                let sum = arr.reduce((sum, c) => sum +c, 0);
+                IO.write_to_stdout(sum == 10 ? "y" : "n");
+            "#,
+        )?;
+        assert_eq!(output, "y");
+        Ok(())
+    }
+
+    #[test]
+    fn generator_iterator_protocol() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function* gen() {
+                    yield "hi";
+                    return;
+                }
+                let it = gen();
+                IO.write_to_stdout(it.next().value);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
+        Ok(())
+    }
+
+    #[test]
+    fn generator_iterator_protocol_indirect() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function* gen() {
+                    yield "hi";
+                    return;
+                }
+                let it = gen()[Symbol.iterator]();
+                IO.write_to_stdout(it.next().value);
+            "#,
+        )?;
+        assert_eq!(output, "hi");
         Ok(())
     }
 
@@ -786,6 +847,12 @@ mod test {
             .spawn()?;
         let output = child.wait_with_output()?;
         std::fs::remove_file(&name)?;
+        if output.stderr.len() > 0 {
+            return Err(anyhow!(
+                "Program printed to stderr: {}",
+                String::from_utf8(output.stderr)?
+            ));
+        }
         Ok(String::from_utf8(output.stdout)?)
     }
 }
