@@ -887,6 +887,24 @@ mod test {
     }
 
     #[test]
+    fn generator_exception() -> Result<()> {
+        let output = compile_and_run(
+            r#"
+                function* gen() {
+                    throw "omg";
+                }
+                try {
+                    for(let v of gen()) {}
+                } catch(e) {
+                    IO.write_to_stdout(e);
+                }
+            "#,
+        )?;
+        assert_eq!(output, "omg");
+        Ok(())
+    }
+
+    #[test]
     fn exceptions() -> Result<()> {
         let output = compile_and_run(
             r#"

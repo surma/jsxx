@@ -181,7 +181,6 @@ JSValue JSArray::iterator_impl(JSValue thisArg, std::vector<JSValue> &args) {
       [=](JSValue thisArg,
           std::vector<JSValue> &args) mutable -> JSGeneratorAdapter {
         if (thisArg.type() != JSValueType::ARRAY) {
-          // FIXME This isn’t caught
           throw std::string("Called array iterator with a non-array value");
         }
         auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
@@ -262,7 +261,12 @@ void JSGeneratorAdapter::promise_type::return_void() noexcept {
   this->value = std::nullopt;
 }
 
-void JSGeneratorAdapter::promise_type::unhandled_exception() {}
+void JSGeneratorAdapter::promise_type::unhandled_exception() {
+  auto ptr = std::current_exception();
+  if (ptr) {
+    std::rethrow_exception(ptr);
+  }
+}
 
 std::experimental::suspend_always
 JSGeneratorAdapter::promise_type::yield_value(JSValue value) {
