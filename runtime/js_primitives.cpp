@@ -272,3 +272,58 @@ JSGeneratorAdapter::promise_type::yield_value(JSValue value) {
 }
 
 JSValue iterator_symbol = JSValue::new_object({});
+
+JSIterator::JSIterator() : JSIterator{JSValue::undefined()} {}
+
+JSIterator::JSIterator(JSValue val) : it{std::make_shared<JSValue>(val)} {}
+
+JSIterator::JSIterator(JSValue val, JSValue parent) : JSIterator(val) {
+  this->parent = {std::make_shared<JSValue>(parent)};
+}
+
+JSIterator JSIterator::end_marker() {
+  JSIterator it{};
+  it.last_value =
+      std::optional{shared_ptr<JSValue>{new JSValue{JSValue::new_object({
+          {JSValue{"value"}, JSValue::undefined()},
+          {JSValue{"done"}, JSValue{true}},
+      })}}};
+  return it;
+}
+
+JSValue JSIterator::operator*() { return this->value()["value"]; }
+
+JSIterator JSIterator::operator++() {
+  if (!this->it->is_undefined()) {
+    if (this->parent.has_value()) {
+      this->last_value = std::optional{std::make_shared<JSValue>(
+          (*this->it)["next"].apply(*this->parent.value(), {}))};
+    } else {
+      this->last_value =
+          std::optional{std::make_shared<JSValue>((*this->it)["next"]({}))};
+    }
+  }
+  return *this;
+}
+
+bool JSIterator::operator!=(const JSIterator &other) {
+  if (other.last_value.has_value() != this->last_value.has_value()) {
+    return true;
+  }
+  JSValue left = *this->last_value.value();
+  JSValue right = *other.last_value.value();
+  bool left_done = left["done"].coerce_to_bool();
+  bool right_done = right["done"].coerce_to_bool();
+  if (left_done && right_done) {
+    return false;
+  }
+  return left_done != right_done ||
+         (left["value"] != right["value"]).coerce_to_bool();
+}
+
+JSValue JSIterator::value() {
+  if (!this->last_value.has_value()) {
+    ++(*this);
+  }
+  return *this->last_value.value();
+}

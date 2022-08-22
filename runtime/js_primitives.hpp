@@ -9,6 +9,7 @@
 
 #include "js_value.hpp"
 
+using std::optional;
 using std::shared_ptr;
 
 class JSValue;
@@ -22,7 +23,7 @@ public:
   JSBase();
 
   virtual JSValue get_property(JSValue key, JSValue parent);
-  virtual std::optional<JSValue>
+  virtual optional<JSValue>
   get_property_from_list(const std::vector<std::pair<JSValue, JSValue>> &list,
                          JSValue key, JSValue parent);
 
@@ -97,10 +98,28 @@ struct JSGeneratorAdapter {
 
     std::experimental::suspend_always yield_value(JSValue value);
 
-    std::optional<std::shared_ptr<JSValue>> value;
+    optional<std::shared_ptr<JSValue>> value;
   };
 
   std::experimental::coroutine_handle<promise_type> h;
 };
 
 extern JSValue iterator_symbol;
+
+class JSIterator {
+public:
+  JSIterator();
+  JSIterator(JSValue val);
+  JSIterator(JSValue val, JSValue parent);
+  static JSIterator end_marker();
+
+  JSValue operator*();
+  JSIterator operator++();
+  bool operator!=(const JSIterator &other);
+
+  JSValue value();
+
+  shared_ptr<JSValue> it;
+  optional<shared_ptr<JSValue>> last_value = std::nullopt;
+  optional<shared_ptr<JSValue>> parent = std::nullopt;
+};

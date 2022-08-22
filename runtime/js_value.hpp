@@ -113,22 +113,3 @@ public:
   std::optional<Getter> getter = std::nullopt;
   std::optional<Setter> setter = std::nullopt;
 };
-
-// TODO: Move me primitives?
-class JSIterator {
-public:
-  JSIterator();
-  JSIterator(JSValue val);
-  JSIterator(JSValue val, JSValue parent);
-  static JSIterator end_marker();
-
-  JSValue operator*();
-  JSIterator operator++();
-  bool operator!=(const JSIterator &other);
-
-  JSValue value();
-
-  shared_ptr<JSValue> it;
-  optional<shared_ptr<JSValue>> last_value = std::nullopt;
-  optional<shared_ptr<JSValue>> parent = std::nullopt;
-};
