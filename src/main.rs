@@ -72,6 +72,7 @@ fn cpp_to_binary(
         .chain(
             [
                 "--std=c++20",
+                "-DFEATURE_EXCEPTIONS=1",
                 "-o",
                 outputname.as_ref(),
                 cpp_file_name.as_ref(),
@@ -80,6 +81,7 @@ fn cpp_to_binary(
                 "runtime/global_io.cpp",
                 "runtime/js_primitives.cpp",
                 "runtime/js_value.cpp",
+                "runtime/exceptions.cpp",
             ]
             .into_iter(),
         )

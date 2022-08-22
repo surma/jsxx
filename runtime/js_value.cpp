@@ -1,4 +1,5 @@
 #include "js_value.hpp"
+#include "exceptions.hpp"
 #include <cmath>
 
 JSValue::JSValue()
@@ -89,8 +90,7 @@ JSValue JSValue::new_generator_function(CoroutineFunc gen_f) {
 
 JSValue &JSValue::operator++() {
   if (this->type() != JSValueType::NUMBER) {
-    *this = JSValue::undefined();
-    return *this;
+    js_throw(JSValue{"Can’t ++ something that is not a number"});
   }
   this->get_number() = this->get_number() + 1.0;
   return *this;
@@ -98,8 +98,7 @@ JSValue &JSValue::operator++() {
 
 JSValue JSValue::operator++(int) {
   if (this->type() != JSValueType::NUMBER) {
-    *this = JSValue::undefined();
-    return JSValue::undefined();
+    js_throw(JSValue{"Can’t ++ something that is not a number"});
   }
   JSValue prev{this->get_number()};
   this->get_number() = this->get_number() + 1.0;
@@ -108,8 +107,7 @@ JSValue JSValue::operator++(int) {
 
 JSValue &JSValue::operator--() {
   if (this->type() != JSValueType::NUMBER) {
-    *this = JSValue::undefined();
-    return *this;
+    js_throw(JSValue{"Can’t -- something that is not a number"});
   }
   this->get_number() = this->get_number() - 1.0;
   return *this;
@@ -117,8 +115,7 @@ JSValue &JSValue::operator--() {
 
 JSValue JSValue::operator--(int) {
   if (this->type() != JSValueType::NUMBER) {
-    *this = JSValue::undefined();
-    return JSValue::undefined();
+    js_throw(JSValue{"Can’t -- something that is not a number"});
   }
   JSValue prev{this->get_number()};
   this->get_number() = this->get_number() - 1.0;
@@ -253,7 +250,7 @@ JSValue JSValue::get_property(const JSValue key, JSValue parent) {
   JSValue v;
   switch (this->type()) {
   case JSValueType::UNDEFINED:
-    v = JSValue::undefined();
+    js_throw(JSValue{"Can’t read property of undefined"});
     break;
   case JSValueType::BOOL:
     v = std::get<JSValueType::BOOL>(*this->value).get_property(key, parent);
@@ -366,7 +363,7 @@ bool JSValue::coerce_to_bool() const {
 
 JSValue JSValue::apply(JSValue thisArg, std::vector<JSValue> args) {
   if (this->type() != JSValueType::FUNCTION) {
-    throw std::string("Calling a non-function");
+    js_throw(JSValue{"Calling a non-function"});
   }
   JSFunction f = std::get<JSValueType::FUNCTION>(*this->value);
   return f.call(thisArg, args);

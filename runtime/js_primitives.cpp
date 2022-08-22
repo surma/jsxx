@@ -1,4 +1,5 @@
 #include "js_primitives.hpp"
+#include "exceptions.hpp"
 
 JSBase::JSBase() {}
 
@@ -94,7 +95,7 @@ JSArray::JSArray(std::vector<JSValue> data) : JSArray() {
 
 JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
-    return JSValue::undefined();
+    js_throw(JSValue{"Called push on non-array"});
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   for (auto v : args) {
     arr->internal->push_back(v);
@@ -104,10 +105,8 @@ JSValue JSArray::push_impl(JSValue thisArg, std::vector<JSValue> &args) {
 
 JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
-    return JSValue::undefined();
+    js_throw(JSValue{"Called map on non-array"});
   JSValue f = args[0];
-  if (f.type() != JSValueType::FUNCTION)
-    return JSValue::undefined();
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   JSArray result_arr{};
   for (int i = 0; i < arr->internal->size(); i++) {
@@ -119,10 +118,8 @@ JSValue JSArray::map_impl(JSValue thisArg, std::vector<JSValue> &args) {
 
 JSValue JSArray::filter_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
-    return JSValue::undefined();
+    js_throw(JSValue{"Called filter on non-array"});
   JSValue f = args[0];
-  if (f.type() != JSValueType::FUNCTION)
-    return JSValue::undefined();
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
   JSArray result_arr{};
   for (int i = 0; i < arr->internal->size(); i++) {
@@ -136,11 +133,9 @@ JSValue JSArray::filter_impl(JSValue thisArg, std::vector<JSValue> &args) {
 
 JSValue JSArray::reduce_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
-    return JSValue::undefined();
+    js_throw(JSValue{"Called reduce on non-array"});
   auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
 
-  if (args[0].type() != JSValueType::FUNCTION)
-    return JSValue::undefined();
   JSValue f = args[0];
 
   int i;
@@ -161,7 +156,7 @@ JSValue JSArray::reduce_impl(JSValue thisArg, std::vector<JSValue> &args) {
 
 JSValue JSArray::join_impl(JSValue thisArg, std::vector<JSValue> &args) {
   if (thisArg.type() != JSValueType::ARRAY)
-    return JSValue::undefined();
+    js_throw(JSValue{"Called join on non-array"});
 
   std::string delimiter = "";
   std::string result = "";
@@ -181,7 +176,7 @@ JSValue JSArray::iterator_impl(JSValue thisArg, std::vector<JSValue> &args) {
       [=](JSValue thisArg,
           std::vector<JSValue> &args) mutable -> JSGeneratorAdapter {
         if (thisArg.type() != JSValueType::ARRAY) {
-          throw std::string("Called array iterator with a non-array value");
+          js_throw(JSValue{"Called array iterator with a non-array value"});
         }
         auto arr = std::get<JSValueType::ARRAY>(*thisArg.value);
         for (auto value : *arr->internal) {
@@ -197,7 +192,7 @@ JSValue JSArray::get_property(const JSValue key, JSValue parent) {
   if (key.type() == JSValueType::NUMBER) {
     auto idx = static_cast<size_t>(key.coerce_to_double());
     if (idx >= this->internal->size())
-      return JSValue::undefined();
+      js_throw(JSValue{"Array access out of bounds"});
     return (*this->internal)[idx];
   }
   return JSBase::get_property(key, parent);

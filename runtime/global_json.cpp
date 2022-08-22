@@ -1,5 +1,5 @@
-
 #include "global_json.hpp"
+#include "exceptions.hpp"
 #include <variant>
 #include <vector>
 
@@ -53,7 +53,7 @@ static JSValue json_parse_object(const char **cur) {
     auto key = json_parse_string(cur);
     eat_whitespace(cur);
     if (**cur != ':')
-      return JSValue::undefined();
+      js_throw(JSValue{"Expected `:` after property name"});
     (*cur)++;
     eat_whitespace(cur);
     auto value = json_parse_value(cur);
@@ -103,12 +103,13 @@ static JSValue json_parse_value(const char **input) {
     *input += 5;
     return JSValue{false};
   }
-  return JSValue::undefined();
+  js_throw(JSValue{"Unexpected token"});
+  return JSValue::undefined(); // unreachable
 }
 
 static JSValue json_parse(JSValue thisArg, std::vector<JSValue> &args) {
   if (args[0].type() != JSValueType::STRING)
-    return JSValue::undefined();
+    js_throw(JSValue{"Can only parse strings"});
   std::string input = args[0].coerce_to_string();
   const char *c = input.c_str();
   return json_parse_value(&c);
