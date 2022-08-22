@@ -61,11 +61,29 @@ impl Transpiler {
                 }
             })
             .collect();
+
+        let main = if self.feature_exceptions {
+            r#"
+                try {{
+                    prog();
+                }} catch(std::string e) {{
+                    printf("EXCEPTION: %s\n", e.c_str());
+                }}
+            "#
+        } else {
+            r#"
+                {{
+                    prog();
+                }}
+            "#
+        };
+
         Ok(format!(
             r#"
                 {additional_includes}
                 #include <experimental/coroutine>
                 #include "runtime/js_value.hpp"
+                #include "runtime/exceptions.hpp"
 
                 int prog() {{
                     {inits}
@@ -75,17 +93,14 @@ impl Transpiler {
                 }}
 
                 int main() {{
-                    try {{
-                        prog();
-                    }} catch(std::string e) {{
-                        printf("EXCEPTION: %s\n", e.c_str());
-                    }}
+                    {main}
                 }}
             "#,
             additional_includes = additional_includes,
             inits = inits,
             global_exprs = global_exprs,
-            program = Result::<Vec<String>>::from_iter(transpiled_items)?.join(";\n")
+            program = Result::<Vec<String>>::from_iter(transpiled_items)?.join(";\n"),
+            main = main
         ))
     }
 
@@ -109,7 +124,7 @@ impl Transpiler {
 
     fn transpile_throw_stmt(&mut self, throw_stmt: &ThrowStmt) -> Result<String> {
         let expr = self.transpile_expr(&throw_stmt.arg)?;
-        Ok(format!("throw {}", expr))
+        Ok(format!("js_throw({})", expr))
     }
 
     fn transpile_catch_clause(&mut self, catch_clause: &CatchClause) -> Result<String> {
@@ -148,15 +163,27 @@ impl Transpiler {
                 .as_ref()
                 .ok_or(anyhow!("Missing catch handler"))?,
         )?;
-        Ok(format!(
-            r#"
-                try {{
+
+        if self.feature_exceptions {
+            Ok(format!(
+                r#"
+                    try {{
+                        {}
+                    }}
                     {}
-                }}
-                {}
-            "#,
-            block, handler
-        ))
+                "#,
+                block, handler
+            ))
+        } else {
+            Ok(format!(
+                r#"
+                    {{
+                        {}
+                    }}
+                "#,
+                block
+            ))
+        }
     }
 
     fn transpile_for_of_stmt(&mut self, for_of_stmt: &ForOfStmt) -> Result<String> {

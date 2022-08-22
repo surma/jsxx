@@ -28,8 +28,8 @@ struct Args {
     emit_cpp: bool,
 
     /// Use C++ exceptions.
-    #[clap(long = "exceptions", default_value_t = true, value_parser)]
-    exceptions: bool,
+    #[clap(long = "wasm", default_value_t = false, value_parser)]
+    wasm: bool,
 
     /// Extra flags to path to clang++
     extra_flags: Vec<String>,
@@ -75,7 +75,6 @@ fn cpp_to_binary(
         .chain(
             [
                 "--std=c++20",
-                "-DFEATURE_EXCEPTIONS=1",
                 "-o",
                 outputname.as_ref(),
                 cpp_file_name.as_ref(),
@@ -109,7 +108,7 @@ fn main() -> Result<()> {
     std::io::stdin().read_to_string(&mut input)?;
 
     let mut transpiler = transpiler::Transpiler::new();
-    transpiler.feature_exceptions = args.exceptions;
+    transpiler.feature_exceptions = !args.wasm;
     let cpp_code = js_to_cpp(transpiler, &input)?;
 
     if args.emit_cpp {
@@ -117,11 +116,23 @@ fn main() -> Result<()> {
             command_utils::pipe_through_shell::<String>("clang-format", &[], cpp_code.as_bytes())?;
         println!("{}", String::from_utf8(stdout)?);
     } else {
+        let mut flags = args.extra_flags.clone();
+        let mut extension = "".to_string();
+        if args.wasm {
+            flags.push("-fno-exceptions".to_string());
+            flags.push("--target=wasm32-wasi".to_string());
+            if let Ok(wasi_sdk_prefix) = std::env::var("WASI_SDK_PREFIX") {
+                flags.push(format!("--sysroot={}/share/wasi-sysroot", wasi_sdk_prefix));
+            }
+            extension = ".wasm".to_string();
+        } else {
+            flags.push("-DFEATURE_EXCEPTIONS".to_string());
+        }
         cpp_to_binary(
             cpp_code,
-            "output".to_string(),
+            format!("output{}", extension),
             args.clang_path,
-            &args.extra_flags,
+            &flags,
         )?;
     }
     Ok(())
