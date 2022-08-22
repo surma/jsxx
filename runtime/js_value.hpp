@@ -35,8 +35,7 @@ enum JSValueType : char {
   STRING,
   ARRAY,
   OBJECT,
-  FUNCTION,
-  EXCEPTION
+  FUNCTION
 };
 
 class JSValue {

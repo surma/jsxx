@@ -273,11 +273,6 @@ JSValue JSValue::get_property(const JSValue key, JSValue parent) {
   case JSValueType::FUNCTION:
     v = std::get<JSValueType::FUNCTION>(*this->value).get_property(key, parent);
     break;
-  // TODO remove me?!
-  case JSValueType::EXCEPTION:
-    v = std::get<JSValueType::EXCEPTION>(*this->value)
-            ->get_property(key, parent);
-    break;
   };
   v.set_parent(*this);
   return v;
@@ -340,13 +335,11 @@ std::string JSValue::coerce_to_string() const {
   case JSValueType::STRING:
     return std::get<JSValueType::STRING>(*this->value).internal;
   case JSValueType::ARRAY:
-    return "[Array]"; // FIXME
+    return "[Array]";
   case JSValueType::OBJECT:
-    return "[Object object]"; // FIXME?
+    return "[Object object]";
   case JSValueType::FUNCTION:
-    return "<function>"; // FIXME?
-  case JSValueType::EXCEPTION:
-    return "[EXCEPTION]"; // FIXME?
+    return "<function>";
   }
   return "?";
 }
@@ -356,19 +349,17 @@ bool JSValue::coerce_to_bool() const {
   case JSValueType::UNDEFINED:
     return false;
   case JSValueType::BOOL:
-    return std::get<JSBool>(*this->value).internal;
+    return std::get<JSValueType::BOOL>(*this->value).internal;
   case JSValueType::NUMBER:
-    return std::get<JSNumber>(*this->value).internal > 0;
+    return std::get<JSValueType::NUMBER>(*this->value).internal > 0;
   case JSValueType::STRING:
-    return std::get<JSString>(*this->value).internal.length() > 0;
+    return std::get<JSValueType::STRING>(*this->value).internal.length() > 0;
   case JSValueType::ARRAY:
-    return false; // FIXME
+    return std::get<JSValueType::ARRAY>(*this->value)->internal->size() > 0;
   case JSValueType::OBJECT:
-    return true; // FIXME
+    return true;
   case JSValueType::FUNCTION:
-    return true; // FIXME
-  case JSValueType::EXCEPTION:
-    return true; // FIXME
+    return true;
   }
   return "?";
 }
