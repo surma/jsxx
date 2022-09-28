@@ -27,7 +27,7 @@ struct Args {
     #[clap(long = "emit-cpp", default_value_t = false, value_parser)]
     emit_cpp: bool,
 
-    /// Use C++ exceptions.
+    /// Target WebAssembly
     #[clap(long = "wasm", default_value_t = false, value_parser)]
     wasm: bool,
 
